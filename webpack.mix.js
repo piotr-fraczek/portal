@@ -1,4 +1,5 @@
-const { mix } = require('laravel-mix');
+const mix = require('laravel-mix');
+const FlareWebpackPluginSourcemap = require("@flareapp/flare-webpack-plugin-sourcemap");
 
 /*
  |--------------------------------------------------------------------------
@@ -11,9 +12,13 @@ const { mix } = require('laravel-mix');
  |
  */
 
-mix.js('resources/assets/js/app.js', 'public/build/js')
-    .sass('resources/assets/sass/app.scss', 'public/build/css');
-
-if (mix.config.inProduction) {
-    mix.version();
-}
+mix.js('resources/js/app.js', 'public/js')
+    .webpackConfig({
+        plugins: [new FlareWebpackPluginSourcemap({ key: process.env.FLARE_KEY })],
+    })
+    .sourceMaps(true, 'hidden-source-map')
+    .postCss('resources/css/app.css', 'public/css', [
+        require('postcss-import'),
+        require('tailwindcss'),
+    ])
+    .version();

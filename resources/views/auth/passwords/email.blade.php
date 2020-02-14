@@ -3,15 +3,16 @@
 @extends('layouts.small')
 
 @section('small-content')
-    <p>{{ Session::get('status', 'Please fill in your email address below.') }}</p>
+    <p class="mb-4">{{ Session::get('status', 'Please fill in your email address below.') }}</p>
 
-    {!! Form::open(['route' => 'password.forgot.post']) !!}
+    <form action="{{ route('password.forgot.post') }}" method="POST" class="w-full">
+        @csrf
         @formGroup('email')
-            {!! Form::label('email') !!}
-            {!! Form::email('email', null, ['class' => 'form-control', 'required']) !!}
+            <label for="email" name="email">Email</label>
+            <input type="email" id="email" name="email" class="form-control" required />
             @error('email')
         @endFormGroup
 
-        {!! Form::submit('Send Password Reset Link', ['class' => 'btn btn-primary btn-block']) !!}
-    {!! Form::close() !!}
+        <button type="submit" class="w-full button button-primary">Send Password Reset Link</button>
+    </form>
 @endsection

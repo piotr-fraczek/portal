@@ -2,11 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\User;
-use Carbon\Carbon;
 use App\Models\Reply;
 use App\Models\Thread;
-use Tests\BrowserKitTestCase;
+use App\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 
 class AdminTest extends BrowserKitTestCase
@@ -72,7 +71,7 @@ class AdminTest extends BrowserKitTestCase
         $user = factory(User::class)->create(['name' => 'Freek Murze']);
 
         $this->put('/admin/users/'.$user->username().'/ban')
-            ->assertRedirectedTo('/admin/users/'.$user->username());
+            ->assertRedirectedTo('/user/'.$user->username());
 
         $this->notSeeInDatabase('users', ['id' => $user->id(), 'banned_at' => null]);
     }
@@ -96,7 +95,7 @@ class AdminTest extends BrowserKitTestCase
         $user = factory(User::class)->create(['name' => 'Freek Murze', 'banned_at' => Carbon::now()]);
 
         $this->put('/admin/users/'.$user->username().'/unban')
-            ->assertRedirectedTo('/admin/users/'.$user->username());
+            ->assertRedirectedTo('/user/'.$user->username());
 
         $this->seeInDatabase('users', ['id' => $user->id(), 'banned_at' => null]);
     }

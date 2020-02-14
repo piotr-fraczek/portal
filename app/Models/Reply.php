@@ -3,24 +3,37 @@
 namespace App\Models;
 
 use App\Helpers\HasAuthor;
-use App\Helpers\ModelHelpers;
+use App\Helpers\HasLikes;
 use App\Helpers\HasTimestamps;
+use App\Helpers\ModelHelpers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 
-class Reply extends Model
+final class Reply extends Model
 {
-    use HasAuthor, HasTimestamps, ModelHelpers;
+    use HasAuthor;
+    use HasLikes;
+    use HasTimestamps;
+    use ModelHelpers;
+
+    const TABLE = 'replies';
 
     /**
      * {@inheritdoc}
      */
-    protected $table = 'replies';
+    protected $table = self::TABLE;
 
     /**
      * {@inheritdoc}
      */
-    protected $fillable = ['body', 'ip'];
+    protected $fillable = [
+        'body',
+    ];
+
+    protected $with = ['likes'];
+
+    protected $appends = ['likes_count'];
 
     public function id(): int
     {
@@ -34,7 +47,7 @@ class Reply extends Model
 
     public function excerpt(int $limit = 100): string
     {
-        return str_limit(strip_tags(md_to_html($this->body())), $limit);
+        return Str::limit(strip_tags(md_to_html($this->body())), $limit);
     }
 
     public function to(ReplyAble $replyAble)
@@ -47,8 +60,14 @@ class Reply extends Model
         return $this->replyAbleRelation;
     }
 
+    /**
+     * It's important to name the relationship the same as the method because otherwise
+     * eager loading of the polymorphic relationship will fail on queued jobs.
+     *
+     * @see https://github.com/laravelio/portal/issues/350
+     */
     public function replyAbleRelation(): MorphTo
     {
-        return $this->morphTo('replyable');
+        return $this->morphTo('replyAbleRelation', 'replyable_type', 'replyable_id');
     }
 }

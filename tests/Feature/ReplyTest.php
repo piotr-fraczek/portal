@@ -2,10 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\User;
 use App\Models\Reply;
 use App\Models\Thread;
-use Tests\BrowserKitTestCase;
+use App\User;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 
 class ReplyTest extends BrowserKitTestCase
@@ -15,16 +14,16 @@ class ReplyTest extends BrowserKitTestCase
     /** @test */
     public function users_can_add_a_reply_to_a_thread()
     {
-        factory(Thread::class)->create(['subject' => 'The first thread', 'slug' => 'the-first-thread']);
+        $thread = factory(Thread::class)->create(['subject' => 'The first thread', 'slug' => 'the-first-thread']);
 
         $this->login();
 
-        $this->visit('/forum/the-first-thread')
-            ->type('The first reply', 'body')
-            ->press('Reply')
-            ->see('The first thread')
-            ->see('The first reply')
-            ->see('Reply successfully added!');
+        $this->post('/replies', [
+            'body' => 'The first reply',
+            'replyable_id' => $thread->id,
+            'replyable_type' => Thread::TABLE,
+        ])
+            ->assertSessionHas('success', 'Reply successfully added!');
     }
 
     /** @test */
@@ -36,12 +35,11 @@ class ReplyTest extends BrowserKitTestCase
 
         $this->loginAs($user);
 
-        $this->visit('/replies/1/edit')
-            ->type('The edited reply', 'body')
-            ->press('Update')
-            ->seePageIs('/forum/the-first-thread')
-            ->see('The edited reply')
-            ->see('Reply successfully updated!');
+        $this->put('/replies/1', [
+            'body' => 'The edited reply',
+        ])
+            ->assertRedirectedTo('/forum/the-first-thread')
+            ->assertSessionHas('success', 'Reply successfully updated!');
     }
 
     /** @test */
@@ -77,5 +75,44 @@ class ReplyTest extends BrowserKitTestCase
 
         $this->put('/forum/the-first-thread/mark-solution/'.$reply->id())
             ->assertForbidden();
+    }
+
+    /** @test */
+    public function users_cannot_reply_to_a_thread_if_the_last_reply_is_older_than_six_months()
+    {
+        $thread = factory(Thread::class)->states('old')->create();
+
+        $this->login();
+
+        $this->visit("/forum/{$thread->slug}")
+            ->dontSee('value="Reply"')
+            ->seeText(
+                'The last reply to this thread was more than six months ago. Please consider opening a new thread if you have a similar question.'
+            );
+    }
+
+    /** @test */
+    public function confirmed_users_can_see_the_reply_input()
+    {
+        $thread = factory(Thread::class)->create();
+
+        $this->login(['confirmed' => true]);
+
+        $this->visit("/forum/{$thread->slug}")
+            ->see('name="body"');
+    }
+
+    /** @test */
+    public function unconfirmed_users_cannot_see_the_reply_input()
+    {
+        $thread = factory(Thread::class)->create();
+
+        $this->login(['confirmed' => false]);
+
+        $this->visit("/forum/{$thread->slug}")
+            ->dontSee('name="body"')
+            ->seeText(
+                'You\'ll need to verify your account before participating in this thread.'
+            );
     }
 }

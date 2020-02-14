@@ -2,10 +2,9 @@
 
 namespace Tests\Feature;
 
-use Auth;
 use App\User;
-use Tests\BrowserKitTestCase;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\Auth;
 
 class SettingsTest extends BrowserKitTestCase
 {
@@ -57,6 +56,26 @@ class SettingsTest extends BrowserKitTestCase
     }
 
     /** @test */
+    public function users_can_delete_their_account()
+    {
+        $this->login(['name' => 'Freek Murze']);
+
+        $this->delete('/settings')
+            ->assertRedirectedTo('/');
+
+        $this->notSeeInDatabase('users', ['name' => 'Freek Murze']);
+    }
+
+    /** @test */
+    public function users_cannot_delete_their_account()
+    {
+        $this->loginAsAdmin();
+
+        $this->visit('/settings')
+            ->dontSee('Delete Account');
+    }
+
+    /** @test */
     public function users_can_update_their_password()
     {
         $this->login();
@@ -91,8 +110,8 @@ class SettingsTest extends BrowserKitTestCase
         $this->assertPasswordWasHashedAndSaved();
     }
 
-    private function assertPasswordWasHashedAndSaved()
+    private function assertPasswordWasHashedAndSaved(): void
     {
-        return $this->assertTrue($this->app['hash']->check('newpassword', Auth::user()->getAuthPassword()));
+        $this->assertTrue($this->app['hash']->check('newpassword', Auth::user()->getAuthPassword()));
     }
 }

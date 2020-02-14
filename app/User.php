@@ -2,15 +2,15 @@
 
 namespace App;
 
+use App\Helpers\HasTimestamps;
+use App\Helpers\ModelHelpers;
 use App\Models\Reply;
 use App\Models\Thread;
-use App\Helpers\ModelHelpers;
-use App\Helpers\HasTimestamps;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+final class User extends Authenticatable
 {
     use HasTimestamps, ModelHelpers, Notifiable;
 
@@ -147,7 +147,7 @@ class User extends Authenticatable
     /**
      * @return \App\Models\Thread[]
      */
-    public function latestThreads(int $amount = 3)
+    public function latestThreads(int $amount = 5)
     {
         return $this->threadsRelation()->latest()->limit($amount)->get();
     }
@@ -182,14 +182,18 @@ class User extends Authenticatable
     /**
      * @return \App\Models\Reply[]
      */
-    public function latestReplies(int $amount = 3)
+    public function latestReplies(int $amount = 10)
     {
         return $this->replyAble()->latest()->limit($amount)->get();
     }
 
     public function deleteReplies()
     {
-        $this->replyAble()->delete();
+        // We need to explicitly iterate over the replies and delete them
+        // separately because all related models need to be deleted.
+        foreach ($this->replyAble()->get() as $reply) {
+            $reply->delete();
+        }
     }
 
     public function countReplies(): int
@@ -216,17 +220,17 @@ class User extends Authenticatable
         })->count();
     }
 
-    public static function findByUsername(string $username): User
+    public static function findByUsername(string $username): self
     {
         return static::where('username', $username)->firstOrFail();
     }
 
-    public static function findByEmailAddress(string $emailAddress): User
+    public static function findByEmailAddress(string $emailAddress): self
     {
         return static::where('email', $emailAddress)->firstOrFail();
     }
 
-    public static function findByGithubId(string $githubId): User
+    public static function findByGithubId(string $githubId): self
     {
         return static::where('github_id', $githubId)->firstOrFail();
     }

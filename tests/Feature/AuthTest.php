@@ -2,13 +2,12 @@
 
 namespace Tests\Feature;
 
-use Auth;
-use Mail;
+use App\Mail\EmailConfirmationEmail;
 use Carbon\Carbon;
-use Tests\BrowserKitTestCase;
-use App\Mail\EmailConfirmation;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class AuthTest extends BrowserKitTestCase
 {
@@ -28,13 +27,14 @@ class AuthTest extends BrowserKitTestCase
             ->type('123', 'github_id')
             ->type('johndoe', 'github_username')
             ->check('rules')
+            ->check('terms')
             ->press('Register')
             ->seePageIs('/dashboard')
-            ->see('Welcome John Doe!');
+            ->see('@johndoe');
 
         $this->assertLoggedIn();
 
-        Mail::assertSent(EmailConfirmation::class);
+        Mail::assertSent(EmailConfirmationEmail::class);
     }
 
     /** @test */
@@ -103,7 +103,7 @@ class AuthTest extends BrowserKitTestCase
             ->type('password', 'password')
             ->press('Login')
             ->seePageIs('/dashboard')
-            ->see('Welcome John Doe!');
+            ->see('@johndoe');
     }
 
     /** @test */
@@ -199,12 +199,12 @@ class AuthTest extends BrowserKitTestCase
             ->see('Please confirm your email address first.');
     }
 
-    private function assertLoggedIn()
+    private function assertLoggedIn(): void
     {
         $this->assertTrue(Auth::check());
     }
 
-    private function assertLoggedOut()
+    private function assertLoggedOut(): void
     {
         $this->assertFalse(Auth::check());
     }

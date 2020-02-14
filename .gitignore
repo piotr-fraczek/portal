@@ -1,13 +1,11 @@
 /node_modules
-/public/build
+/public/css
+/public/js
 /public/fonts
 /public/storage
 /public/hot
 /public/mix-manifest.json
 /storage/*.key
 /vendor
-Homestead.json
-Homestead.yaml
 .env
-/aliases
-/after.sh
+.phpunit.result.cache

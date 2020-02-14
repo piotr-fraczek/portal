@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Reply;
 use App\Models\Thread;
-use Tests\BrowserKitTestCase;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Arr;
 
 class DashboardTest extends BrowserKitTestCase
 {
@@ -22,8 +22,8 @@ class DashboardTest extends BrowserKitTestCase
     public function users_can_see_some_statistics()
     {
         $user = $this->createUser();
-        $thread = array_first(factory(Thread::class, 3)->create(['author_id' => $user->id()]));
-        $reply = array_first(factory(Reply::class, 2)->create([
+        $thread = Arr::first(factory(Thread::class, 3)->create(['author_id' => $user->id()]));
+        $reply = Arr::first(factory(Reply::class, 2)->create([
             'author_id' => $user->id(),
             'replyable_id' => $thread->id(),
         ]));
@@ -32,8 +32,8 @@ class DashboardTest extends BrowserKitTestCase
         $this->loginAs($user);
 
         $this->visit('/dashboard')
-            ->see('<div class="panel-body">3</div>') // 3 threads
-            ->see('<div class="panel-body">2</div>') // 2 posts
-            ->see('<div class="panel-body">1</div>'); // 1 solution
+            ->see('3 threads')
+            ->see('2 replies')
+            ->see('1 solution');
     }
 }

@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Auth;
-use App\User;
+use App\Http\Controllers\Controller;
 use App\Jobs\ConfirmUser;
 use App\Jobs\SendEmailConfirmation;
-use App\Http\Controllers\Controller;
+use App\User;
+use Auth;
 use Illuminate\Auth\Middleware\Authenticate;
 
 class EmailConfirmationController extends Controller
@@ -21,7 +21,7 @@ class EmailConfirmationController extends Controller
         if (Auth::user()->isConfirmed()) {
             $this->error('auth.confirmation.already_confirmed');
         } else {
-            $this->dispatchNow(new SendEmailConfirmation(Auth::user()));
+            $this->dispatch(new SendEmailConfirmation(Auth::user()));
 
             $this->success('auth.confirmation.sent', Auth::user()->emailAddress());
         }

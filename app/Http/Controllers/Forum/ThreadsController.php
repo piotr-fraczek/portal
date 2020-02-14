@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Forum;
 
-use App\Models\Tag;
-use App\Models\Reply;
-use App\Models\Thread;
+use App\Http\Controllers\Controller;
+use App\Http\Middleware\RedirectIfUnconfirmed;
+use App\Http\Requests\ThreadRequest;
 use App\Jobs\CreateThread;
 use App\Jobs\DeleteThread;
+use App\Jobs\MarkThreadSolution;
+use App\Jobs\SubscribeToSubscriptionAble;
+use App\Jobs\UnmarkThreadSolution;
+use App\Jobs\UnsubscribeFromSubscriptionAble;
 use App\Jobs\UpdateThread;
+use App\Models\Reply;
+use App\Models\Tag;
+use App\Models\Thread;
 use App\Policies\ThreadPolicy;
 use App\Queries\SearchThreads;
-use App\Jobs\MarkThreadSolution;
-use App\Jobs\UnmarkThreadSolution;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\ThreadRequest;
 use Illuminate\Auth\Middleware\Authenticate;
-use App\Http\Middleware\RedirectIfUnconfirmed;
+use Illuminate\Http\Request;
 
 class ThreadsController extends Controller
 {
@@ -39,7 +42,10 @@ class ThreadsController extends Controller
 
     public function create()
     {
-        return view('forum.threads.create', ['tags' => Tag::all()]);
+        $tags = Tag::all();
+        $selectedTags = old('tags') ?: [];
+
+        return view('forum.threads.create', ['tags' => $tags, 'selectedTags' => $selectedTags]);
     }
 
     public function store(ThreadRequest $request)
@@ -54,8 +60,9 @@ class ThreadsController extends Controller
     public function edit(Thread $thread)
     {
         $this->authorize(ThreadPolicy::UPDATE, $thread);
+        $selectedTags = $thread->tags()->pluck('id')->toArray();
 
-        return view('forum.threads.edit', ['thread' => $thread, 'tags' => Tag::all()]);
+        return view('forum.threads.edit', ['thread' => $thread, 'tags' => Tag::all(), 'selectedTags' => $selectedTags]);
     }
 
     public function update(ThreadRequest $request, Thread $thread)
@@ -94,6 +101,28 @@ class ThreadsController extends Controller
         $this->authorize(ThreadPolicy::UPDATE, $thread);
 
         $this->dispatchNow(new UnmarkThreadSolution($thread));
+
+        return redirect()->route('thread', $thread->slug());
+    }
+
+    public function subscribe(Request $request, Thread $thread)
+    {
+        $this->authorize(ThreadPolicy::SUBSCRIBE, $thread);
+
+        $this->dispatchNow(new SubscribeToSubscriptionAble($request->user(), $thread));
+
+        $this->success("You're now subscribed to this thread.");
+
+        return redirect()->route('thread', $thread->slug());
+    }
+
+    public function unsubscribe(Request $request, Thread $thread)
+    {
+        $this->authorize(ThreadPolicy::UNSUBSCRIBE, $thread);
+
+        $this->dispatchNow(new UnsubscribeFromSubscriptionAble($request->user(), $thread));
+
+        $this->success("You're now unsubscribed from this thread.");
 
         return redirect()->route('thread', $thread->slug());
     }

@@ -4,8 +4,9 @@ namespace App\Social;
 
 use Carbon\Carbon;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Support\Arr;
 
-class GithubUser implements Arrayable
+final class GithubUser implements Arrayable
 {
     /**
      * @var array
@@ -34,7 +35,7 @@ class GithubUser implements Arrayable
 
     private function get($name)
     {
-        return array_get($this->attributes, $name);
+        return Arr::get($this->attributes, $name);
     }
 
     public function toArray(): array

@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\User;
 use App\Models\Reply;
+use App\User;
 
 class ReplyPolicy
 {
@@ -16,8 +16,7 @@ class ReplyPolicy
      */
     public function create(User $user): bool
     {
-        // We only need to be logged in.
-        return true;
+        return $user->isConfirmed();
     }
 
     /**

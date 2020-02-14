@@ -3,22 +3,18 @@
 @extends('layouts.default')
 
 @section('content')
-    <div class="panel panel-default panel-search">
-        <div class="panel-heading">
-            Users
-            {{ Form::open(['route' => 'admin', 'method' => 'GET']) }}
-                <div class="input-group">
-                    {{ Form::text('search', $search ?? null, ['class' => 'form-control', 'placeholder' => 'Search for users...']) }}
-                    <span class="input-group-btn">
-                        <button class="btn btn-primary" type="submit">
-                            <i class="fa fa-search"></i>
-                        </button>
-                    </span>
-                </div>
-            {{ Form::close() }}
+    <div class="bg-white border-b">
+        <div class="container mx-auto flex justify-between items-center px-4">
+            <h1 class="text-xl py-4 text-gray-900">{{ $title }}</h1>
+            
+            <form action="{{ route('admin') }}" method="GET">
+                <input type="text" name="search" id="search" class="form-control" placeholder="Search for users..." value="{{ $search ?? null }}" />
+            </form>
         </div>
+    </div>
 
-        <table class="table table-striped table-sort">
+    <div class="container mx-auto px-4">
+        <table class="table table-striped mt-8">
             <thead>
                 <tr>
                     <th>Joined On</th>
@@ -46,7 +42,7 @@
                             @endif
                         </td>
                         <td style="text-align:center;">
-                            <a href="{{ route('admin.users.show', $user->username()) }}" class="btn btn-xs btn-link">
+                            <a href="{{ route('profile', $user->username()) }}" class="text-green-dark">
                                 <i class="fa fa-gear"></i>
                             </a>
                         </td>
@@ -54,9 +50,9 @@
                 @endforeach
             </tbody>
         </table>
-    </div>
 
-    <div class="text-center">
-        {!! $users->render() !!}
+        <div class="flex justify-center">
+            {!! $users->render() !!}
+        </div>
     </div>
 @endsection

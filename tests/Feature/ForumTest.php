@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Http\Livewire\LikeReply;
+use App\Http\Livewire\LikeThread;
+use App\Models\Reply;
 use App\Models\Tag;
 use App\Models\Thread;
-use Tests\BrowserKitTestCase;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Livewire\Livewire;
 
 class ForumTest extends BrowserKitTestCase
 {
@@ -20,6 +23,22 @@ class ForumTest extends BrowserKitTestCase
         $this->visit('/forum')
             ->see('The first thread')
             ->see('The second thread');
+    }
+
+    /** @test */
+    public function users_can_see_when_a_thread_is_resolved()
+    {
+        factory(Thread::class)->create(['subject' => 'The first thread']);
+        $thread = factory(Thread::class)->create(['subject' => 'The second thread']);
+        $reply = factory(Reply::class)->create();
+        $thread->solutionReplyRelation()->associate($reply)->save();
+
+        $this->visit('/forum')
+            ->see('The first thread')
+            ->see('The second thread')
+            ->see('View solution')
+            ->click('View solution')
+            ->seeRouteIs('thread', ['thread' => $thread->slug()]);
     }
 
     /** @test */
@@ -48,14 +67,12 @@ class ForumTest extends BrowserKitTestCase
 
         $this->login();
 
-        $this->visit('/forum/create-thread')
-            ->submitForm('Create Thread', [
-                'subject' => 'http://example.com Foo title',
-                'body' => 'This text explains how to work with Eloquent.',
-                'tags' => [$tag->id()],
-            ])
-            ->seePageIs('/forum/create-thread')
-            ->see('The subject field cannot contain an url.');
+        $this->post('/forum/create-thread', [
+            'subject' => 'http://example.com Foo title',
+            'body' => 'This text explains how to work with Eloquent.',
+            'tags' => [$tag->id()],
+        ])
+            ->assertSessionHasErrors(['subject' => 'The subject field cannot contain an url.']);
     }
 
     /** @test */
@@ -65,16 +82,13 @@ class ForumTest extends BrowserKitTestCase
 
         $this->login();
 
-        $this->visit('/forum/create-thread')
-            ->submitForm('Create Thread', [
-                'subject' => 'How to work with Eloquent?',
-                'body' => 'This text explains how to work with Eloquent.',
-                'tags' => [$tag->id()],
-            ])
-            ->seePageIs('/forum/how-to-work-with-eloquent')
-            ->see('How to work with Eloquent?')
-            ->see('Test Tag')
-            ->see('Thread successfully created!');
+        $this->post('/forum/create-thread', [
+            'subject' => 'How to work with Eloquent?',
+            'body' => 'This text explains how to work with Eloquent.',
+            'tags' => [$tag->id()],
+        ])
+            ->assertRedirectedTo('/forum/how-to-work-with-eloquent')
+            ->assertSessionHas('success', 'Thread successfully created!');
     }
 
     /** @test */
@@ -89,16 +103,13 @@ class ForumTest extends BrowserKitTestCase
 
         $this->loginAs($user);
 
-        $this->visit('/forum/my-first-thread/edit')
-            ->submitForm('Update Thread', [
-                'subject' => 'How to work with Eloquent?',
-                'body' => 'This text explains how to work with Eloquent.',
-                'tags' => [$tag->id()],
-            ])
-            ->seePageIs('/forum/how-to-work-with-eloquent')
-            ->see('How to work with Eloquent?')
-            ->see('Test Tag')
-            ->see('Thread successfully updated!');
+        $this->put('/forum/my-first-thread', [
+            'subject' => 'How to work with Eloquent?',
+            'body' => 'This text explains how to work with Eloquent.',
+            'tags' => [$tag->id()],
+        ])
+            ->assertRedirectedTo('/forum/how-to-work-with-eloquent')
+            ->assertSessionHas('success', 'Thread successfully updated!');
     }
 
     /** @test */
@@ -130,15 +141,14 @@ class ForumTest extends BrowserKitTestCase
 
         $this->login();
 
-        $this->visit('/forum/create-thread')
-            ->submitForm('Create Thread', [
-                'subject' => 'How to make Eloquent, Doctrine, Entities and Annotations work together in Laravel?',
-                'body' => 'This is a thread with 82 characters in the subject',
-                'tags' => [$tag->id()],
-            ])
-            ->seePageIs('/forum/create-thread')
-            ->see('Something went wrong. Please review the fields below.')
-            ->see('The subject may not be greater than 60 characters.');
+        $response = $this->post('/forum/create-thread', [
+            'subject' => 'How to make Eloquent, Doctrine, Entities and Annotations work together in Laravel?',
+            'body' => 'This is a thread with 82 characters in the subject',
+            'tags' => [$tag->id()],
+        ]);
+
+        $response->assertSessionHas('error', 'Something went wrong. Please review the fields below.');
+        $response->assertSessionHasErrors(['subject' => 'The subject may not be greater than 60 characters.']);
     }
 
     /** @test */
@@ -153,14 +163,63 @@ class ForumTest extends BrowserKitTestCase
 
         $this->loginAs($user);
 
-        $this->visit('/forum/my-first-thread/edit')
-            ->submitForm('Update Thread', [
-                'subject' => 'How to make Eloquent, Doctrine, Entities and Annotations work together in Laravel?',
-                'body' => 'This is a thread with 82 characters in the subject',
-                'tags' => [$tag->id()],
-            ])
-            ->seePageIs('/forum/my-first-thread/edit')
-            ->see('Something went wrong. Please review the fields below.')
-            ->see('The subject may not be greater than 60 characters.');
+        $response = $this->put('/forum/my-first-thread', [
+            'subject' => 'How to make Eloquent, Doctrine, Entities and Annotations work together in Laravel?',
+            'body' => 'This is a thread with 82 characters in the subject',
+            'tags' => [$tag->id()],
+        ]);
+
+        $response->assertSessionHas('error', 'Something went wrong. Please review the fields below.');
+        $response->assertSessionHasErrors(['subject' => 'The subject may not be greater than 60 characters.']);
+    }
+
+    /** @test */
+    public function a_user_can_toggle_a_like_on_a_thread()
+    {
+        $this->login();
+        $thread = factory(Thread::class)->create();
+
+        Livewire::test(LikeThread::class, $thread)
+            ->assertSee("0\n")
+            ->call('toggleLike')
+            ->assertSee("1\n")
+            ->call('toggleLike')
+            ->assertSee("0\n");
+    }
+
+    /** @test */
+    public function a_logged_out_user_cannot_toggle_a_like_on_a_thread()
+    {
+        $thread = factory(Thread::class)->create();
+
+        Livewire::test(LikeThread::class, $thread)
+            ->assertSee("0\n")
+            ->call('toggleLike')
+            ->assertSee("0\n");
+    }
+
+    /** @test */
+    public function a_user_can_toggle_a_like_on_a_reply()
+    {
+        $this->login();
+        $reply = factory(Reply::class)->create();
+
+        Livewire::test(LikeReply::class, $reply)
+            ->assertSee("0\n")
+            ->call('toggleLike')
+            ->assertSee("1\n")
+            ->call('toggleLike')
+            ->assertSee("0\n");
+    }
+
+    /** @test */
+    public function a_logged_out_user_cannot_toggle_a_like_on_a_reply()
+    {
+        $reply = factory(Reply::class)->create();
+
+        Livewire::test(LikeReply::class, $reply)
+            ->assertSee("0\n")
+            ->call('toggleLike')
+            ->assertSee("0\n");
     }
 }

@@ -3,60 +3,64 @@
 @extends('layouts.settings')
 
 @section('content')
-    <div class="panel panel-default">
-        <div class="panel-heading">{{ $title }}</div>
-        <div class="panel-body">
-            {!! Form::open(['route' => 'settings.profile.update', 'method' => 'PUT', 'class' => 'form-horizontal']) !!}
-                <div class="form-group">
-                    <div class="col-md-6 col-md-offset-3">
-                        <img class="img-circle" src="{{ Auth::user()->gravatarUrl(100) }}">
-                        <span class="help-block">Change your avatar on <a href="https://gravatar.com/">Gravatar</a>.</span>
-                    </div>
+    <div class="md:p-4 md:border-2 md:rounded md:bg-gray-100 mb-8">
+        <form action="{{ route('settings.profile.update') }}" method="POST">
+            @csrf
+            @method('PUT')
+
+            <div class="form-group">
+                <div>
+                    <img class="rounded-full" src="{{ Auth::user()->gravatarUrl(100) }}">
+                    <span class="text-gray-600 text-sm">Change your avatar on <a href="https://gravatar.com/" class="text-green-darker">Gravatar</a>.</span>
                 </div>
+            </div>
 
-                @formGroup('name')
-                    {!! Form::label('name', null, ['class' => 'col-md-3 control-label']) !!}
+            @formGroup('name')
+                <label for="name">Name</label>
+                <input type="text" name="name" id="name" value="{{ Auth::user()->name() }}" required />
+                @error('name')
+            @endFormGroup
 
-                    <div class="col-md-6">
-                        {!! Form::text('name', Auth::user()->name(), ['class' => 'form-control', 'required']) !!}
-                        @error('name')
-                    </div>
-                @endFormGroup
+            @formGroup('email')
+                <label for="email">Email</label>
+                <input type="email" name="email" id="email" value="{{ Auth::user()->emailAddress() }}" required />
+                @error('email')
+            @endFormGroup
 
-                @formGroup('email')
-                    {!! Form::label('email', null, ['class' => 'col-md-3 control-label']) !!}
+            @formGroup('username')
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" value="{{ Auth::user()->username() }}" required />
+                @error('username')
+            @endFormGroup
 
-                    <div class="col-md-6">
-                        {!! Form::email('email', Auth::user()->emailAddress(), ['class' => 'form-control', 'required']) !!}
-                        @error('email')
-                    </div>
-                @endFormGroup
+            @formGroup('bio')
+                <label for="bio">Bio</label>
+                <textarea name="bio" rows="3" maxlength="160">{{ Auth::user()->bio() }}</textarea>
+                <span class="text-gray-600 text-sm">The user bio is limited to 160 characters.</span>
+                @error('bio')
+            @endFormGroup
 
-                @formGroup('username')
-                    {!! Form::label('username', null, ['class' => 'col-md-3 control-label']) !!}
-
-                    <div class="col-md-6">
-                        {!! Form::text('username', Auth::user()->username(), ['class' => 'form-control', 'required']) !!}
-                        @error('username')
-                    </div>
-                @endFormGroup
-
-                @formGroup('bio')
-                    {!! Form::label('bio', null, ['class' => 'col-md-3 control-label']) !!}
-
-                    <div class="col-md-6">
-                        {!! Form::textarea('bio', Auth::user()->bio(), ['class' => 'form-control', 'rows' => 3, 'maxlength' => 160]) !!}
-                        <span class="help-block">The user bio is limited to 160 characters.</span>
-                        @error('bio')
-                    </div>
-                @endFormGroup
-
-                <div class="form-group">
-                    <div class="col-md-offset-3 col-md-6">
-                        {!! Form::submit('Save', ['class' => 'btn btn-primary']) !!}
-                    </div>
-                </div>
-            {!! Form::close() !!}
-        </div>
+            <div class="flex justify-end">
+                <button type="submit" class="button button-primary">Save</button>
+            </div>
+        </form>
     </div>
+
+    @unless (Auth::user()->isAdmin())
+        <div class="md:p-4 md:border-2 md:rounded md:bg-gray-100 mb-8">
+            <h3 class="text-red-primary uppercase mb-4">Danger Zone</h3>
+            <p class="mb-8">Please be aware that deleting your account will also remove all of your data, including your threads and replies. This cannot be undone.</p>
+            <div class="flex">
+                <a href="javascript:" class="button button-danger" @click.prevent="activeModal = 'delete-user'">Delete Account</a>
+            </div>
+        </div>
+
+        @include('_partials._delete_modal', [
+            'identifier' => 'delete-user',
+            'route' => ['settings.profile.delete'],
+            'title' => 'Delete Account',
+            'submit' => 'Confirm',
+            'body' => '<p>Deleting your account will remove any related content like threads & replies. This cannot be undone.</p>',
+        ])
+    @endunless
 @endsection

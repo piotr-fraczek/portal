@@ -2,17 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\DoesNotContainUrlRule;
+use App\Rules\HttpImageRule;
 use App\User;
-use App\Validation\SpamRule;
-use App\Validation\DoesNotContainUrlRule;
 
 class ThreadRequest extends Request
 {
     public function rules()
     {
         return [
-            'subject' => 'required|max:60|'.DoesNotContainUrlRule::NAME.'|'.SpamRule::NAME,
-            'body' => 'required|'.SpamRule::NAME,
+            'subject' => ['required', 'max:60', new DoesNotContainUrlRule],
+            'body' => ['required', new HttpImageRule],
             'tags' => 'array',
             'tags.*' => 'exists:tags,id',
         ];

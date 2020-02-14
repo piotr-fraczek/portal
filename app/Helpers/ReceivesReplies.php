@@ -25,11 +25,32 @@ trait ReceivesReplies
 
     public function deleteReplies()
     {
-        $this->repliesRelation()->delete();
+        // We need to explicitly iterate over the replies and delete them
+        // separately because all related models need to be deleted.
+        foreach ($this->repliesRelation()->get() as $reply) {
+            $reply->delete();
+        }
     }
 
+    /**
+     * It's important to name the relationship the same as the method because otherwise
+     * eager loading of the polymorphic relationship will fail on queued jobs.
+     *
+     * @see https://github.com/laravelio/portal/issues/350
+     */
     public function repliesRelation(): MorphMany
     {
-        return $this->morphMany(Reply::class, 'replyable');
+        return $this->morphMany(Reply::class, 'repliesRelation', 'replyable_type', 'replyable_id');
+    }
+
+    public function isConversationOld(): bool
+    {
+        $sixMonthsAgo = now()->subMonths(6);
+
+        if ($reply = $this->repliesRelation()->latest()->first()) {
+            return $reply->createdAt()->lt($sixMonthsAgo);
+        }
+
+        return $this->createdAt()->lt($sixMonthsAgo);
     }
 }

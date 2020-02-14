@@ -2,10 +2,11 @@
 
 namespace App\Jobs;
 
-use App\Models\Thread;
 use App\Http\Requests\ThreadRequest;
+use App\Models\Thread;
+use Illuminate\Support\Arr;
 
-class UpdateThread
+final class UpdateThread
 {
     /**
      * @var \App\Models\Thread
@@ -20,7 +21,7 @@ class UpdateThread
     public function __construct(Thread $thread, array $attributes = [])
     {
         $this->thread = $thread;
-        $this->attributes = array_only($attributes, ['subject', 'body', 'slug', 'tags']);
+        $this->attributes = Arr::only($attributes, ['subject', 'body', 'slug', 'tags']);
     }
 
     public static function fromRequest(Thread $thread, ThreadRequest $request): self
@@ -37,7 +38,7 @@ class UpdateThread
     {
         $this->thread->update($this->attributes);
 
-        if (array_has($this->attributes, 'tags')) {
+        if (Arr::has($this->attributes, 'tags')) {
             $this->thread->syncTags($this->attributes['tags']);
         }
 

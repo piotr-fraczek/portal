@@ -2,25 +2,42 @@
 
 namespace App\Models;
 
-use DB;
+use App\Exceptions\CouldNotMarkReplyAsSolution;
+use App\Helpers\HasAuthor;
+use App\Helpers\HasLikes;
 use App\Helpers\HasSlug;
 use App\Helpers\HasTags;
-use App\Helpers\HasAuthor;
-use App\Helpers\ModelHelpers;
 use App\Helpers\HasTimestamps;
+use App\Helpers\ModelHelpers;
+use App\Helpers\ProvidesSubscriptions;
 use App\Helpers\ReceivesReplies;
-use Illuminate\Database\Eloquent\Model;
+use DB;
+use Exception;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Contracts\Pagination\Paginator;
-use App\Exceptions\CouldNotMarkReplyAsSolution;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Str;
+use Spatie\Feed\Feedable;
+use Spatie\Feed\FeedItem;
 
-class Thread extends Model implements ReplyAble
+final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedable
 {
-    use HasAuthor, HasSlug, HasTimestamps, ModelHelpers, ReceivesReplies, HasTags;
+    use HasAuthor;
+    use HasLikes;
+    use HasSlug;
+    use HasTags;
+    use HasTimestamps;
+    use ModelHelpers;
+    use ProvidesSubscriptions;
+    use ReceivesReplies;
 
     const TABLE = 'threads';
+
+    const FEED_PAGE_SIZE = 20;
 
     /**
      * {@inheritdoc}
@@ -30,7 +47,11 @@ class Thread extends Model implements ReplyAble
     /**
      * {@inheritdoc}
      */
-    protected $fillable = ['subject', 'body', 'ip', 'slug'];
+    protected $fillable = [
+        'body',
+        'slug',
+        'subject',
+    ];
 
     public function id(): int
     {
@@ -49,7 +70,7 @@ class Thread extends Model implements ReplyAble
 
     public function excerpt(int $limit = 100): string
     {
-        return str_limit(strip_tags(md_to_html($this->body())), $limit);
+        return Str::limit(strip_tags(md_to_html($this->body())), $limit);
     }
 
     public function solutionReply(): ?Reply
@@ -60,6 +81,11 @@ class Thread extends Model implements ReplyAble
     public function solutionReplyRelation(): BelongsTo
     {
         return $this->belongsTo(Reply::class, 'solution_reply_id');
+    }
+
+    public function isSolved(): bool
+    {
+        return ! is_null($this->solution_reply_id);
     }
 
     public function isSolutionReply(Reply $reply): bool
@@ -97,6 +123,19 @@ class Thread extends Model implements ReplyAble
         parent::delete();
     }
 
+    public function toFeedItem(): FeedItem
+    {
+        $updatedAt = Carbon::parse($this->latest_creation);
+
+        return FeedItem::create()
+            ->id($this->id)
+            ->title($this->subject)
+            ->summary($this->body)
+            ->updated($updatedAt)
+            ->link(route('thread', $this->slug))
+            ->author($this->author()->name);
+    }
+
     /**
      * @return \App\Models\Thread[]
      */
@@ -132,10 +171,11 @@ class Thread extends Model implements ReplyAble
      */
     public static function feedQuery(): Builder
     {
-        return static::leftJoin('replies', function ($join) {
-            $join->on('threads.id', 'replies.replyable_id')
+        return static::with('solutionReplyRelation')
+            ->leftJoin('replies', function ($join) {
+                $join->on('threads.id', 'replies.replyable_id')
                     ->where('replies.replyable_type', static::TABLE);
-        })
+            })
             ->orderBy('latest_creation', 'DESC')
             ->groupBy('threads.id')
             ->select('threads.*', DB::raw('
@@ -144,5 +184,27 @@ class Thread extends Model implements ReplyAble
                 ELSE threads.created_at
                 END AS latest_creation
             '));
+    }
+
+    /**
+     * This will calculate the average resolution time in days of all threads marked as resolved.
+     */
+    public static function resolutionTime()
+    {
+        try {
+            return static::join('replies', 'threads.solution_reply_id', '=', 'replies.id')
+                ->select(DB::raw('avg(datediff(replies.created_at, threads.created_at)) as duration'))
+                ->pluck('duration')
+                ->first();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public static function getFeedItems(): SupportCollection
+    {
+        return static::feedQuery()
+            ->paginate(static::FEED_PAGE_SIZE)
+            ->getCollection();
     }
 }

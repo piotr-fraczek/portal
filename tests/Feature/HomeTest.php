@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use Tests\BrowserKitTestCase;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 
 class HomeTest extends BrowserKitTestCase

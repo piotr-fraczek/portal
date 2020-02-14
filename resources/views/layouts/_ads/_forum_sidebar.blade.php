@@ -1,9 +1,8 @@
-@if (config('services.google.ad_sense.enabled'))
+@if ($adSenseClient = config('services.google.ad_sense.client'))
     <div style="margin-top:25px">
-        <hr>
-        <ins class="adsbygoogle"
+        <ins class="adsbygoogle sidebar-ad"
              style="display:block"
-             data-ad-client="{{ config('services.google.ad_sense.client') }}"
+             data-ad-client="{{ $adSenseClient }}"
              data-ad-slot="{{ config('services.google.ad_sense.unit_forum_sidebar') }}"
              data-ad-format="rectangle"></ins>
         <script>

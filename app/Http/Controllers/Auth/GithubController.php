@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Auth;
-use App\User;
-use Socialite;
-use App\Social\GithubUser;
-use App\Jobs\UpdateProfile;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\RedirectResponse;
-use Laravel\Socialite\Two\User as SocialiteUser;
+use App\Jobs\UpdateProfile;
+use App\Social\GithubUser;
+use App\User;
+use Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\RedirectResponse;
+use Laravel\Socialite\Two\InvalidStateException;
+use Laravel\Socialite\Two\User as SocialiteUser;
+use Socialite;
 
 class GithubController extends Controller
 {
@@ -27,20 +28,31 @@ class GithubController extends Controller
      */
     public function handleProviderCallback()
     {
-        $socialiteUser = Socialite::driver('github')->user();
+        try {
+            $socialiteUser = $this->getSocialiteUser();
+        } catch (InvalidStateException $exception) {
+            $this->error('errors.github_invalid_state');
+
+            return redirect()->route('login');
+        }
 
         try {
             $user = User::findByGithubId($socialiteUser->getId());
-
-            return $this->userFound($user, $socialiteUser);
         } catch (ModelNotFoundException $exception) {
-            return $this->userNotFound(new GithubUser($socialiteUser->user));
+            return $this->userNotFound(new GithubUser($socialiteUser->getRaw()));
         }
+
+        return $this->userFound($user, $socialiteUser);
+    }
+
+    private function getSocialiteUser(): SocialiteUser
+    {
+        return Socialite::driver('github')->user();
     }
 
     private function userFound(User $user, SocialiteUser $socialiteUser): RedirectResponse
     {
-        $this->dispatchNow(new UpdateProfile($user, ['github_username' => $socialiteUser->nickname]));
+        $this->dispatchNow(new UpdateProfile($user, ['github_username' => $socialiteUser->getNickname()]));
 
         Auth::login($user);
 

@@ -2,15 +2,15 @@
 
 namespace App\Http\Requests;
 
-use App\Validation\PasscheckRule;
+use App\Rules\PasscheckRule;
 
 class UpdatePasswordRequest extends Request
 {
     public function rules()
     {
         return [
-            'current_password' => 'sometimes|required|'.PasscheckRule::NAME,
-            'password' => 'required|confirmed|min:6',
+            'current_password' => ['sometimes', 'required', new PasscheckRule],
+            'password' => 'required|confirmed|min:8',
         ];
     }
 

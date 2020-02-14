@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\User;
-use App\Jobs\BanUser;
-use App\Jobs\UnbanUser;
-use App\Jobs\DeleteUser;
-use App\Policies\UserPolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\VerifyAdmins;
+use App\Jobs\BanUser;
+use App\Jobs\DeleteUser;
+use App\Jobs\UnbanUser;
+use App\Policies\UserPolicy;
+use App\User;
 use Illuminate\Auth\Middleware\Authenticate;
 
 class UsersController extends Controller
@@ -16,11 +16,6 @@ class UsersController extends Controller
     public function __construct()
     {
         $this->middleware([Authenticate::class, VerifyAdmins::class]);
-    }
-
-    public function show(User $user)
-    {
-        return view('admin.users.show', compact('user'));
     }
 
     public function ban(User $user)
@@ -31,7 +26,7 @@ class UsersController extends Controller
 
         $this->success('admin.users.banned', $user->name());
 
-        return redirect()->route('admin.users.show', $user->username());
+        return redirect()->route('profile', $user->username());
     }
 
     public function unban(User $user)
@@ -42,7 +37,7 @@ class UsersController extends Controller
 
         $this->success('admin.users.unbanned', $user->name());
 
-        return redirect()->route('admin.users.show', $user->username());
+        return redirect()->route('profile', $user->username());
     }
 
     public function delete(User $user)

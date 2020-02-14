@@ -2,12 +2,13 @@
 
 namespace App\Jobs;
 
-use App\User;
 use App\Exceptions\CannotCreateUser;
 use App\Http\Requests\RegisterRequest;
+use App\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Str;
 
-class RegisterUser
+final class RegisterUser
 {
     /**
      * @var string
@@ -27,16 +28,6 @@ class RegisterUser
     /**
      * @var string
      */
-    private $ip;
-
-    /**
-     * @var array
-     */
-    private $attributes;
-
-    /**
-     * @var string
-     */
     private $githubId;
 
     /**
@@ -44,12 +35,11 @@ class RegisterUser
      */
     private $githubUsername;
 
-    public function __construct(string $name, string $email, string $username, string $ip, string $githubId, string $githubUsername)
+    public function __construct(string $name, string $email, string $username, string $githubId, string $githubUsername)
     {
         $this->name = $name;
         $this->email = $email;
         $this->username = $username;
-        $this->ip = $ip;
         $this->githubId = $githubId;
         $this->githubUsername = $githubUsername;
     }
@@ -60,7 +50,6 @@ class RegisterUser
             $request->name(),
             $request->emailAddress(),
             $request->username(),
-            $request->ip(),
             $request->githubId(),
             $request->githubUsername()
         );
@@ -75,11 +64,11 @@ class RegisterUser
             'name' => $this->name,
             'email' => $this->email,
             'username' => strtolower($this->username),
-            'ip' => $this->ip,
             'github_id' => $this->githubId,
             'github_username' => $this->githubUsername,
-            'confirmation_code' => str_random(60),
+            'confirmation_code' => Str::random(60),
             'type' => User::DEFAULT,
+            'bio' => '',
             'remember_token' => '',
         ]);
         $user->save();
