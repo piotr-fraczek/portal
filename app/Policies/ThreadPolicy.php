@@ -3,14 +3,19 @@
 namespace App\Policies;
 
 use App\Models\Thread;
-use App\User;
+use App\Models\User;
 
-class ThreadPolicy
+final class ThreadPolicy
 {
     const UPDATE = 'update';
+
     const DELETE = 'delete';
+
     const SUBSCRIBE = 'subscribe';
+
     const UNSUBSCRIBE = 'unsubscribe';
+
+    const LOCK = 'lock';
 
     public function update(User $user, Thread $thread): bool
     {
@@ -30,5 +35,10 @@ class ThreadPolicy
     public function unsubscribe(User $user, Thread $thread): bool
     {
         return $thread->hasSubscriber($user);
+    }
+
+    public function lock(User $user): bool
+    {
+        return $user->isAdmin() || $user->isModerator();
     }
 }

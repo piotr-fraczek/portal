@@ -1,16 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Listeners;
 
 use App\Events\ReplyWasCreated;
+use App\Models\User;
 use App\Notifications\NewReplyNotification;
-use App\User;
 
 final class SendNewReplyNotification
 {
     public function handle(ReplyWasCreated $event): void
     {
-        foreach ($event->reply->replyAble()->subscriptions() as $subscription) {
+        /** @var \App\Models\Thread $thread */
+        $thread = $event->reply->replyAble();
+
+        foreach ($thread->subscriptions() as $subscription) {
             if ($this->replyAuthorDoesNotMatchSubscriber($event->reply->author(), $subscription)) {
                 $subscription->user()->notify(new NewReplyNotification($event->reply, $subscription));
             }
@@ -19,6 +24,6 @@ final class SendNewReplyNotification
 
     private function replyAuthorDoesNotMatchSubscriber(User $author, $subscription): bool
     {
-        return ! $author->matches($subscription->user());
+        return ! $author->is($subscription->user());
     }
 }

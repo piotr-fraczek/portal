@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Article;
 use App\Models\Reply;
 use App\Models\Thread;
-use Horizon;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Horizon\Horizon;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,8 +22,10 @@ class AppServiceProvider extends ServiceProvider
     private function bootEloquentMorphs()
     {
         Relation::morphMap([
+            Article::TABLE => Article::class,
             Thread::TABLE => Thread::class,
             Reply::TABLE => Reply::class,
+            User::TABLE => User::class,
         ]);
     }
 
@@ -35,8 +39,8 @@ class AppServiceProvider extends ServiceProvider
         Horizon::routeMailNotificationsTo($horizonEmail = config('lio.horizon.email'));
         Horizon::routeSlackNotificationsTo(config('lio.horizon.webhook'));
 
-        Horizon::auth(function ($request) use ($horizonEmail) {
-            return auth()->check() && auth()->user()->emailAddress() === $horizonEmail;
+        Horizon::auth(function ($request) {
+            return auth()->check() && auth()->user()->isAdmin();
         });
     }
 }

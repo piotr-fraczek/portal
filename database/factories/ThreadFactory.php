@@ -1,17 +1,27 @@
 <?php
 
-use App\Models\Thread;
-use App\User;
+declare(strict_types=1);
 
-$factory->define(Thread::class, function (Faker\Generator $faker, array $attributes = []) {
-    return [
-        'subject' => $faker->text(20),
-        'body' => $faker->text,
-        'slug' => $faker->unique()->slug,
-        'author_id' => $attributes['author_id'] ?? factory(User::class)->create()->id(),
-    ];
-});
+namespace Database\Factories;
 
-$factory->state(Thread::class, 'old', [
-    'created_at' => now()->subMonths(7),
-]);
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+class ThreadFactory extends Factory
+{
+    public function definition(): array
+    {
+        return [
+            'subject' => $this->faker->text(20),
+            'body' => $this->faker->text(),
+            'slug' => $this->faker->unique()->slug(),
+            'author_id' => $attributes['author_id'] ?? User::factory(),
+            'created_at' => $this->faker->dateTimeBetween('-6 months'),
+        ];
+    }
+
+    public function old(): self
+    {
+        return $this->state(['created_at' => now()->subMonths(7)]);
+    }
+}

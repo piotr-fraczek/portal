@@ -3,15 +3,21 @@
 namespace App\Http\Requests;
 
 use App\Rules\PasscheckRule;
+use Illuminate\Validation\Rules\Password;
 
 class UpdatePasswordRequest extends Request
 {
     public function rules()
     {
-        return [
-            'current_password' => ['sometimes', 'required', new PasscheckRule],
-            'password' => 'required|confirmed|min:8',
+        $rules = [
+            'password' => ['required', 'confirmed', Password::min(8)->uncompromised()],
         ];
+
+        if ($this->user()->hasPassword()) {
+            $rules['current_password'] = ['required', new PasscheckRule()];
+        }
+
+        return $rules;
     }
 
     public function newPassword(): string

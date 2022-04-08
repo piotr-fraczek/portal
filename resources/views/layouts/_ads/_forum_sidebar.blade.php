@@ -1,12 +1,9 @@
-@if ($adSenseClient = config('services.google.ad_sense.client'))
-    <div style="margin-top:25px">
-        <ins class="adsbygoogle sidebar-ad"
-             style="display:block"
-             data-ad-client="{{ $adSenseClient }}"
-             data-ad-slot="{{ config('services.google.ad_sense.unit_forum_sidebar') }}"
-             data-ad-format="rectangle"></ins>
-        <script>
-            (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-    </div>
-@endif
+@php($banner = Illuminate\Support\Arr::random(config('lio.ads')))
+
+<a href="{{ $banner['url'] }}" target="_blank" rel="noopener noreferrer" onclick="fathom.trackGoal('{{ $banner['goal'] }}', 0);">
+    <img class="my-4 mx-auto w-full" style="max-width:300px" src="{{ asset("/images/showcase/{$banner['image']}-small.png") }}" alt="{{ $banner['alt'] }}">
+</a>
+
+<x-ads.cta class="mt-4 md:mt-6">
+    Your banner here too?
+</x-ads.cta>

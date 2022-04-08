@@ -2,8 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-class AddIndexes extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -22,4 +23,4 @@ class AddIndexes extends Migration
             $table->index('author_id');
         });
     }
-}
+};

@@ -2,8 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-class AddTagSectionFields extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -12,4 +13,4 @@ class AddTagSectionFields extends Migration
             $table->smallInteger('articles')->default(0);
         });
     }
-}
+};

@@ -2,8 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-class AddIpToPastesTable extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -11,4 +12,4 @@ class AddIpToPastesTable extends Migration
             $table->string('ip')->nullable();
         });
     }
-}
+};

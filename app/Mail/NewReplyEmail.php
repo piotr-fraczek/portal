@@ -4,24 +4,20 @@ namespace App\Mail;
 
 use App\Models\Reply;
 use App\Models\Subscription;
+use App\Models\Thread;
+use App\Models\User;
 use Illuminate\Mail\Mailable;
 
 final class NewReplyEmail extends Mailable
 {
-    /**
-     * @var \App\Models\Reply
-     */
-    public $reply;
+    public Thread $thread;
 
-    /**
-     * @var \App\Models\Subscription
-     */
-    public $subscription;
-
-    public function __construct(Reply $reply, Subscription $subscription)
-    {
-        $this->reply = $reply;
-        $this->subscription = $subscription;
+    public function __construct(
+        public Reply $reply,
+        public Subscription $subscription,
+        public User $receiver
+    ) {
+        $this->thread = $reply->replyAble();
     }
 
     public function build()

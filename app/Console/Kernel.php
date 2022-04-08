@@ -4,25 +4,20 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Spatie\ScheduleMonitor\Models\MonitoredScheduledTaskLogItem;
 
 class Kernel extends ConsoleKernel
 {
-    /**
-     * The Artisan commands provided by your application.
-     *
-     * @var array
-     */
-    protected $commands = [
-    ];
-
     /**
      * Define the application's command schedule.
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('backup:clean')->daily()->at('01:00');
-        $schedule->command('backup:run')->daily()->at('02:00');
+        $schedule->command('schedule-monitor:sync')->dailyAt('04:56');
+        $schedule->command('model:prune', ['--model' => MonitoredScheduledTaskLogItem::class])->daily();
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
+        $schedule->command('post-article-to-twitter')->twiceDaily(14, 18);
+        $schedule->command('sitemap:generate')->daily()->graceTimeInMinutes(25);
     }
 
     /**

@@ -18,6 +18,7 @@ return [
         'domain' => env('MAILGUN_DOMAIN'),
         'secret' => env('MAILGUN_SECRET'),
         'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
     ],
 
     'postmark' => [
@@ -36,17 +37,24 @@ return [
         'redirect' => env('GITHUB_URL'),
     ],
 
-    'intercom' => [
-        'app_id' => env('INTERCOM_APP_ID'),
-        'secret' => env('INTERCOM_SECRET'),
-    ],
-
     'google' => [
         'ad_sense' => [
             'client' => env('GOOGLE_AD_SENSE_AD_CLIENT'),
             'unit_footer' => env('GOOGLE_AD_SENSE_UNIT_FOOTER'),
             'unit_forum_sidebar' => env('GOOGLE_AD_SENSE_UNIT_FORUM_SIDEBAR'),
         ],
+    ],
+
+    'twitter' => [
+        'consumer_key' => env('TWITTER_CONSUMER_KEY'),
+        'consumer_secret' => env('TWITTER_CONSUMER_SECRET'),
+        'access_token' => env('TWITTER_ACCESS_TOKEN'),
+        'access_secret' => env('TWITTER_ACCESS_SECRET'),
+    ],
+
+    'telegram-bot-api' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'channel' => env('TELEGRAM_CHANNEL'),
     ],
 
 ];

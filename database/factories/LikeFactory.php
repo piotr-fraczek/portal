@@ -1,28 +1,46 @@
 <?php
 
-use App\Models\Like;
+declare(strict_types=1);
+
+namespace Database\Factories;
+
 use App\Models\Reply;
 use App\Models\Thread;
-use App\User;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
-$factory->define(Like::class, function (Faker\Generator $faker, array $attributes = []) {
-    return [
-        'user_id' => function () {
-            return factory(User::class)->create()->id;
-        },
-    ];
-});
+class LikeFactory extends Factory
+{
+    public function definition(): array
+    {
+        return [
+            'user_id' => function () {
+                return User::factory()->create()->id;
+            },
+        ];
+    }
 
-$factory->state(Like::class, 'reply', [
-    'likeable_id' => function () {
-        return factory(Reply::class)->create()->id;
-    },
-    'likeable_type' => 'replies',
-]);
+    public function reply(): self
+    {
+        return $this->state(function () {
+            return [
+                'likeable_id' => function () {
+                    return Reply::factory()->create()->id;
+                },
+                'likeable_type' => 'replies',
+            ];
+        });
+    }
 
-$factory->state(Like::class, 'thread', [
-    'likeable_id' => function () {
-        return factory(Thread::class)->create()->id;
-    },
-    'likeable_type' => 'threads',
-]);
+    public function thread(): self
+    {
+        return $this->state(function () {
+            return [
+                'likeable_id' => function () {
+                    return Thread::factory()->create()->id;
+                },
+                'likeable_type' => 'threads',
+            ];
+        });
+    }
+}

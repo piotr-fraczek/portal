@@ -3,27 +3,21 @@
 namespace App\Jobs;
 
 use App\Models\Reply;
+use App\Models\User;
 
 final class UpdateReply
 {
-    /**
-     * @var \App\Models\Reply
-     */
-    private $reply;
-
-    /**
-     * @var string
-     */
-    private $body;
-
-    public function __construct(Reply $reply, string $body)
-    {
-        $this->reply = $reply;
-        $this->body = $body;
+    public function __construct(
+        private Reply $reply,
+        private User $updatedBy,
+        private string $body
+    ) {
     }
 
     public function handle()
     {
-        $this->reply->update(['body' => $this->body]);
+        $this->reply->body = $this->body;
+        $this->reply->updatedByRelation()->associate($this->updatedBy);
+        $this->reply->save();
     }
 }

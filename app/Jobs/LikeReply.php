@@ -4,24 +4,14 @@ namespace App\Jobs;
 
 use App\Exceptions\CannotLikeItem;
 use App\Models\Reply;
-use App\User;
+use App\Models\User;
 
 final class LikeReply
 {
-    /**
-     * @var \App\Models\Reply
-     */
-    private $reply;
-
-    /**
-     * @var \App\User
-     */
-    private $user;
-
-    public function __construct(Reply $reply, User $user)
-    {
-        $this->reply = $reply;
-        $this->user = $user;
+    public function __construct(
+        private Reply $reply,
+        private User $user
+    ) {
     }
 
     /**

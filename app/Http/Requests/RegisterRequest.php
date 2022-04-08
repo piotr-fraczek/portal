@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\UniqueGitHubUser;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterRequest extends FormRequest
@@ -11,15 +12,23 @@ class RegisterRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'github_id' => $this->session->get('githubData.id'),
+            'github_username' => $this->session->get('githubData.username'),
+        ]);
+    }
+
     public function rules()
     {
         return [
             'name' => 'required|max:255',
             'email' => 'required|email|max:255|unique:users',
-            'username' => 'required|max:40|unique:users',
+            'username' => 'required|alpha_dash|max:40|unique:users',
             'rules' => 'accepted',
             'terms' => 'accepted',
-            'github_id' => 'required',
+            'github_id' => ['required', new UniqueGitHubUser],
         ];
     }
 

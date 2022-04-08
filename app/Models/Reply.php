@@ -2,38 +2,52 @@
 
 namespace App\Models;
 
-use App\Helpers\HasAuthor;
-use App\Helpers\HasLikes;
-use App\Helpers\HasTimestamps;
-use App\Helpers\ModelHelpers;
+use App\Concerns\HasAuthor;
+use App\Concerns\HasLikes;
+use App\Concerns\HasMentions;
+use App\Concerns\HasTimestamps;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Str;
 
-final class Reply extends Model
+final class Reply extends Model implements MentionAble
 {
     use HasAuthor;
+    use HasFactory;
     use HasLikes;
+    use HasMentions;
     use HasTimestamps;
-    use ModelHelpers;
 
     const TABLE = 'replies';
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     protected $table = self::TABLE;
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     protected $fillable = [
         'body',
     ];
 
-    protected $with = ['likes'];
+    /**
+     * @inheritdoc
+     */
+    protected $with = [
+        'likesRelation',
+        'updatedByRelation',
+    ];
 
-    protected $appends = ['likes_count'];
+    public function solutionTo(): HasOne
+    {
+        return $this->hasOne(Thread::class, 'solution_reply_id');
+    }
 
     public function id(): int
     {
@@ -60,14 +74,34 @@ final class Reply extends Model
         return $this->replyAbleRelation;
     }
 
+    public function updatedBy(): ?User
+    {
+        return $this->updatedByRelation;
+    }
+
+    public function updatedByRelation(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function isUpdated(): bool
+    {
+        return $this->updated_at->gt($this->created_at);
+    }
+
     /**
      * It's important to name the relationship the same as the method because otherwise
      * eager loading of the polymorphic relationship will fail on queued jobs.
      *
-     * @see https://github.com/laravelio/portal/issues/350
+     * @see https://github.com/laravelio/laravel.io/issues/350
      */
     public function replyAbleRelation(): MorphTo
     {
         return $this->morphTo('replyAbleRelation', 'replyable_type', 'replyable_id');
+    }
+
+    public function scopeIsSolution(Builder $builder): Builder
+    {
+        return $builder->has('solutionTo');
     }
 }

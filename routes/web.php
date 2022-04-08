@@ -1,86 +1,135 @@
 <?php
 
+use App\Http\Controllers\Admin\ArticlesController as AdminArticlesController;
+use App\Http\Controllers\Admin\UsersController;
+use App\Http\Controllers\Articles\ArticlesController;
+use App\Http\Controllers\Articles\AuthoredArticles;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\GithubController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Auth\VerificationController;
+use App\Http\Controllers\Forum\TagsController;
+use App\Http\Controllers\Forum\ThreadsController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReplyAbleController;
+use App\Http\Controllers\ReplyController;
+use App\Http\Controllers\Settings\ApiTokenController;
+use App\Http\Controllers\Settings\PasswordController;
+use App\Http\Controllers\Settings\ProfileController as ProfileSettingsController;
+use App\Http\Controllers\SocialImageController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Middleware\Authenticate;
+use Illuminate\Support\Facades\Route;
+
 Route::feeds();
 
 // Home
-Route::get('/', 'HomeController@show')->name('home');
-Route::get('rules', 'HomeController@rules')->name('rules');
-Route::get('terms', 'HomeController@terms')->name('terms');
-Route::get('privacy', 'HomeController@privacy')->name('privacy');
-Route::get('bin/{paste?}', 'HomeController@pastebin');
+Route::get('/', [HomeController::class, 'show'])->name('home');
+Route::view('rules', 'rules')->name('rules');
+Route::view('terms', 'terms')->name('terms');
+Route::view('privacy', 'privacy')->name('privacy');
+Route::get('bin/{paste?}', [HomeController::class, 'pastebin']);
+
+Route::get('articles/{article}/social.png', SocialImageController::class)->name('articles.image');
 
 // Authentication
 Route::namespace('Auth')->group(function () {
     // Sessions
-    Route::get('login', 'LoginController@showLoginForm')->name('login');
-    Route::post('login', 'LoginController@login')->name('login.post');
-    Route::get('logout', 'LoginController@logout')->name('logout');
+    Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('login', [LoginController::class, 'login'])->name('login.post');
+    Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
     // Registration
-    Route::get('register', 'RegisterController@showRegistrationForm')->name('register');
-    Route::post('register', 'RegisterController@register')->name('register.post');
+    Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+    Route::post('register', [RegisterController::class, 'register'])->name('register.post');
 
     // Password reset
-    Route::get('password/reset', 'ForgotPasswordController@showLinkRequestForm')->name('password.forgot');
-    Route::post('password/email', 'ForgotPasswordController@sendResetLinkEmail')->name('password.forgot.post');
-    Route::get('password/reset/{token}', 'ResetPasswordController@showResetForm')->name('password.reset');
-    Route::post('password/reset', 'ResetPasswordController@reset')->name('password.reset.post');
+    Route::get('password/reset', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.forgot');
+    Route::post('password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.forgot.post');
+    Route::get('password/reset/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('password/reset', [ResetPasswordController::class, 'reset'])->name('password.reset.post');
 
-    // Email address confirmation
-    Route::get('email-confirmation', 'EmailConfirmationController@send')->name('email.send_confirmation');
-    Route::get('email-confirmation/{email_address}/{code}', 'EmailConfirmationController@confirm')
-        ->name('email.confirm');
+    // Email address verification
+    Route::get('email/verify', [VerificationController::class, 'show'])->name('verification.notice');
+    Route::get('email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->name('verification.verify');
+    Route::post('email/resend', [VerificationController::class, 'resend'])->name('verification.resend');
 
     // Social authentication
-    Route::get('login/github', 'GithubController@redirectToProvider')->name('login.github');
-    Route::get('auth/github', 'GithubController@handleProviderCallback');
+    Route::get('login/github', [GithubController::class, 'redirectToProvider'])->name('login.github');
+    Route::get('auth/github', [GithubController::class, 'handleProviderCallback']);
 });
 
 // Users
-Route::get('dashboard', 'DashboardController@show')->name('dashboard');
-Route::get('user/{username}', 'ProfileController@show')->name('profile');
-Route::get('avatar/{username}', 'ProfileController@avatar')->name('avatar');
+Route::redirect('/dashboard', '/user');
+Route::get('user/{username?}', [ProfileController::class, 'show'])->name('profile');
+
+// Notifications
+Route::view('notifications', 'users.notifications')->name('notifications')->middleware(Authenticate::class);
 
 // Settings
-Route::get('settings', 'Settings\ProfileController@edit')->name('settings.profile');
-Route::put('settings', 'Settings\ProfileController@update')->name('settings.profile.update');
-Route::delete('settings', 'Settings\ProfileController@destroy')->name('settings.profile.delete');
-Route::get('settings/password', 'Settings\PasswordController@edit')->name('settings.password');
-Route::put('settings/password', 'Settings\PasswordController@update')->name('settings.password.update');
+Route::get('settings', [ProfileSettingsController::class, 'edit'])->name('settings.profile');
+Route::put('settings', [ProfileSettingsController::class, 'update'])->name('settings.profile.update');
+Route::delete('settings', [ProfileSettingsController::class, 'destroy'])->name('settings.profile.delete');
+Route::put('settings/password', [PasswordController::class, 'update'])->name('settings.password.update');
+Route::post('settings/api-tokens', [ApiTokenController::class, 'store'])->name('settings.api-tokens.store');
+Route::delete('settings/api-tokens', [ApiTokenController::class, 'destroy'])->name('settings.api-tokens.delete');
 
 // Forum
-Route::prefix('forum')->namespace('Forum')->group(function () {
-    Route::get('/', 'ThreadsController@overview')->name('forum');
-    Route::get('create-thread', 'ThreadsController@create')->name('threads.create');
-    Route::post('create-thread', 'ThreadsController@store')->name('threads.store');
+Route::prefix('forum')->group(function () {
+    Route::get('/', [ThreadsController::class, 'overview'])->name('forum');
+    Route::get('create-thread', [ThreadsController::class, 'create'])->name('threads.create');
+    Route::post('create-thread', [ThreadsController::class, 'store'])->name('threads.store');
 
-    Route::get('{thread}', 'ThreadsController@show')->name('thread');
-    Route::get('{thread}/edit', 'ThreadsController@edit')->name('threads.edit');
-    Route::put('{thread}', 'ThreadsController@update')->name('threads.update');
-    Route::delete('{thread}', 'ThreadsController@delete')->name('threads.delete');
-    Route::put('{thread}/mark-solution/{reply}', 'ThreadsController@markSolution')->name('threads.solution.mark');
-    Route::put('{thread}/unmark-solution', 'ThreadsController@unmarkSolution')->name('threads.solution.unmark');
-    Route::get('{thread}/subscribe', 'ThreadsController@subscribe')->name('threads.subscribe');
-    Route::get('{thread}/unsubscribe', 'ThreadsController@unsubscribe')->name('threads.unsubscribe');
+    Route::get('{thread}', [ThreadsController::class, 'show'])->name('thread');
+    Route::get('{thread}/edit', [ThreadsController::class, 'edit'])->name('threads.edit');
+    Route::put('{thread}', [ThreadsController::class, 'update'])->name('threads.update');
+    Route::delete('{thread}', [ThreadsController::class, 'delete'])->name('threads.delete');
+    Route::post('{thread}/lock', [ThreadsController::class, 'lock'])->name('threads.lock');
+    Route::put('{thread}/mark-solution/{reply}', [ThreadsController::class, 'markSolution'])->name('threads.solution.mark');
+    Route::put('{thread}/unmark-solution', [ThreadsController::class, 'unmarkSolution'])->name('threads.solution.unmark');
+    Route::post('{thread}/subscribe', [ThreadsController::class, 'subscribe'])->name('threads.subscribe');
+    Route::post('{thread}/unsubscribe', [ThreadsController::class, 'unsubscribe'])->name('threads.unsubscribe');
 
-    Route::get('tags/{tag}', 'TagsController@show')->name('forum.tag');
+    Route::get('tags/{tag}', [TagsController::class, 'show'])->name('forum.tag');
 });
 
 // Replies
-Route::post('replies', 'ReplyController@store')->name('replies.store');
-Route::get('replies/{reply}/edit', 'ReplyController@edit')->name('replies.edit');
-Route::put('replies/{reply}', 'ReplyController@update')->name('replies.update');
-Route::delete('replies/{reply}', 'ReplyController@delete')->name('replies.delete');
+Route::post('replies', [ReplyController::class, 'store'])->name('replies.store');
+Route::delete('replies/{reply}', [ReplyController::class, 'delete'])->name('replies.delete');
+Route::get('replyable/{id}/{type}', [ReplyAbleController::class, 'redirect'])->name('replyable');
 
 // Subscriptions
-Route::get('subscriptions/{subscription}/unsubscribe', 'SubscriptionController@unsubscribe')
+Route::get('subscriptions/{subscription}/unsubscribe', [SubscriptionController::class, 'unsubscribe'])
     ->name('subscriptions.unsubscribe');
 
+// Articles
+Route::prefix('articles')->group(function () {
+    Route::get('authored', AuthoredArticles::class)->name('user.articles');
+    Route::get('/', [ArticlesController::class, 'index'])->name('articles');
+    Route::get('create', [ArticlesController::class, 'create'])->name('articles.create');
+    Route::post('/', [ArticlesController::class, 'store'])->name('articles.store');
+    Route::get('{article}', [ArticlesController::class, 'show'])->name('articles.show');
+    Route::get('{article}/edit', [ArticlesController::class, 'edit'])->name('articles.edit');
+    Route::put('{article}', [ArticlesController::class, 'update'])->name('articles.update');
+    Route::delete('{article}', [ArticlesController::class, 'delete'])->name('articles.delete');
+});
+
 // Admin
-Route::prefix('admin')->name('admin')->namespace('Admin')->group(function () {
-    Route::get('/', 'AdminController@index');
-    Route::get('users/{username}', 'UsersController@show')->name('.users.show');
-    Route::put('users/{username}/ban', 'UsersController@ban')->name('.users.ban');
-    Route::put('users/{username}/unban', 'UsersController@unban')->name('.users.unban');
-    Route::delete('users/{username}', 'UsersController@delete')->name('.users.delete');
+Route::prefix('admin')->name('admin')->group(function () {
+    Route::get('/', [AdminArticlesController::class, 'index']);
+
+    // Users
+    Route::get('users', [UsersController::class, 'index'])->name('.users');
+    Route::put('users/{username}/ban', [UsersController::class, 'ban'])->name('.users.ban');
+    Route::put('users/{username}/unban', [UsersController::class, 'unban'])->name('.users.unban');
+    Route::delete('users/{username}', [UsersController::class, 'delete'])->name('.users.delete');
+
+    // Articles
+    Route::put('articles/{article}/approve', [AdminArticlesController::class, 'approve'])->name('.articles.approve');
+    Route::put('articles/{article}/disapprove', [AdminArticlesController::class, 'disapprove'])->name('.articles.disapprove');
+    Route::put('articles/{article}/decline', [AdminArticlesController::class, 'decline'])->name('.articles.decline');
+    Route::put('articles/{article}/pinned', [AdminArticlesController::class, 'togglePinnedStatus'])->name('.articles.pinned');
 });

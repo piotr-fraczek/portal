@@ -1,29 +1,41 @@
 <?php
 
-use App\User;
+declare(strict_types=1);
+
+namespace Database\Factories;
+
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
-$factory->define(User::class, function (Faker\Generator $faker) {
-    static $password;
+class UserFactory extends Factory
+{
+    public function definition(): array
+    {
+        static $password;
 
-    return [
-        'name' => $faker->name,
-        'email' => $faker->unique()->safeEmail,
-        'username' => $faker->userName,
-        'password' => $password ?: $password = bcrypt('secret'),
-        'remember_token' => Str::random(10),
-        'confirmed' => true,
-        'confirmation_code' => $faker->md5,
-        'github_id' => $faker->numberBetween(10000, 99999),
-        'github_username' => $faker->userName,
-        'banned_at' => null,
-        'type' => User::DEFAULT,
-        'bio' => $faker->sentence,
-    ];
-});
+        return [
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'username' => $this->faker->unique()->userName(),
+            'password' => $password ?: $password = bcrypt('secret'),
+            'remember_token' => Str::random(10),
+            'github_id' => $this->faker->unique()->numberBetween(10000, 99999),
+            'github_username' => $this->faker->unique()->userName(),
+            'twitter' => $this->faker->unique()->userName(),
+            'banned_at' => null,
+            'type' => User::DEFAULT,
+            'bio' => $this->faker->sentence(),
+            'email_verified_at' => now()->subDay(),
+        ];
+    }
 
-$factory->state(User::class, 'passwordless', function () {
-    return [
-        'password' => '',
-    ];
-});
+    public function passwordless(): self
+    {
+        return $this->state(function () {
+            return [
+                'password' => '',
+            ];
+        });
+    }
+}

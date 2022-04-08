@@ -1,5 +1,3 @@
 <div class="thread-info-avatar">
-    <a href="{{ route('profile', $user->username()) }}">
-        <img class="img-circle w-6 rounded-full mr-3" src="{{ $user->gravatarUrl(25) }}">
-    </a>
+    <x-avatar :user="$user" class="img-circle mr-3" width="{{ $size ?? 25 }}" />
 </div>

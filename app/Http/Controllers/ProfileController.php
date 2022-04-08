@@ -2,25 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\User;
-use LasseRafn\InitialAvatarGenerator\InitialAvatar;
+use App\Models\User;
+use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    public function show(User $user)
+    public function show(Request $request, User $user = null)
     {
-        return view('users.profile', compact('user'));
-    }
+        if ($user) {
+            $articles = $user->latestArticles(3);
 
-    public function avatar(User $user)
-    {
-        $avatar = new InitialAvatar();
+            return view('users.profile', compact('user', 'articles'));
+        }
 
-        return $avatar
-            ->name($user->name())
-            ->background('#2C3E50')
-            ->size(100)
-            ->generate()
-            ->response('png', 100);
+        if ($request->user()) {
+            return redirect()->route('profile', $request->user()->username());
+        }
+
+        abort(404);
     }
 }

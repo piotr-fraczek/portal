@@ -8,31 +8,16 @@ use App\Models\Reply;
 use App\Models\ReplyAble;
 use App\Models\Subscription;
 use App\Models\SubscriptionAble;
-use App\User;
+use App\Models\User;
 use Ramsey\Uuid\Uuid;
 
 final class CreateReply
 {
-    /**
-     * @var string
-     */
-    private $body;
-
-    /**
-     * @var \App\User
-     */
-    private $author;
-
-    /**
-     * @var \App\Models\ReplyAble
-     */
-    private $replyAble;
-
-    public function __construct(string $body, User $author, ReplyAble $replyAble)
-    {
-        $this->body = $body;
-        $this->author = $author;
-        $this->replyAble = $replyAble;
+    public function __construct(
+        private string $body,
+        private User $author,
+        private ReplyAble $replyAble
+    ) {
     }
 
     public static function fromRequest(CreateReplyRequest $request): self

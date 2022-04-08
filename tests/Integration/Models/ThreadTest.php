@@ -1,108 +1,178 @@
 <?php
 
-namespace Tests\Integration\Models;
-
+use App\Jobs\CreateReply;
 use App\Models\Reply;
 use App\Models\Thread;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
-class ThreadTest extends TestCase
+uses(TestCase::class);
+uses(DatabaseMigrations::class);
+
+it('can find by slug', function () {
+    Thread::factory()->create(['slug' => 'foo']);
+
+    expect(Thread::findBySlug('foo'))->toBeInstanceOf(Thread::class);
+});
+
+it('can give an excerpt of its body', function () {
+    $thread = Thread::factory()->make(['body' => 'This is a pretty long text.']);
+
+    expect($thread->excerpt(7))->toEqual('This is...');
+});
+
+test('html in excerpts is html encoded', function () {
+    $thread = Thread::factory()->make(['body' => '<p>Thread body</p>']);
+
+    expect($thread->excerpt())->toEqual("&lt;p&gt;Thread body&lt;/p&gt;\n");
+});
+
+test('its conversation is old when the oldest reply was six months ago', function () {
+    $thread = Thread::factory()->create();
+    $thread->repliesRelation()->save(Reply::factory()->make(['created_at' => now()->subMonths(7)]));
+
+    expect($thread->isConversationOld())->toBeTrue();
+
+    $thread = Thread::factory()->create();
+    $thread->repliesRelation()->save(Reply::factory()->make());
+
+    expect($thread->isConversationOld())->toBeFalse();
+});
+
+test('its conversation is old when there are no replies but the creation date was six months ago', function () {
+    $thread = Thread::factory()->create(['created_at' => now()->subMonths(7)]);
+
+    expect($thread->isConversationOld())->toBeTrue();
+
+    $thread = Thread::factory()->create();
+
+    expect($thread->isConversationOld())->toBeFalse();
+});
+
+test('we can mark and unmark a reply as the solution', function () {
+    $thread = Thread::factory()->create();
+    $reply = Reply::factory()->create(['replyable_id' => $thread->id()]);
+    $user = $this->createUser();
+
+    expect($thread->isSolutionReply($reply))->toBeFalse();
+    expect($thread->fresh()->wasResolvedBy($user))->toBeFalse();
+
+    $thread->markSolution($reply, $user);
+
+    expect($thread->isSolutionReply($reply))->toBeTrue();
+    expect($thread->wasResolvedBy($user))->toBeTrue();
+
+    $thread->unmarkSolution();
+
+    expect($thread->isSolutionReply($reply))->toBeFalse();
+    expect($thread->fresh()->wasResolvedBy($user))->toBeFalse();
+});
+
+it('can retrieve the latest threads in a correct order', function () {
+    $threadUpdatedYesterday = createThreadFromYesterday();
+    $threadFromToday = createThreadFromToday();
+    $threadFromTwoDaysAgo = createThreadFromTwoDaysAgo();
+
+    $threads = Thread::feed();
+
+    $this->assertTrue($threadFromToday->is($threads->first()), 'First thread is incorrect');
+    $this->assertTrue($threadUpdatedYesterday->is($threads->slice(1)->first()), 'Second thread is incorrect');
+    $this->assertTrue($threadFromTwoDaysAgo->is($threads->last()), 'Last thread is incorrect');
+});
+
+it('bumps threads when a reply is added', function () {
+    $threadUpdatedYesterday = createThreadFromYesterday();
+    $threadFromToday = createThreadFromToday();
+    $threadFromTwoDaysAgo = createThreadFromTwoDaysAgo();
+    dispatch_sync(new CreateReply('Hello world', User::factory()->create(), $threadFromTwoDaysAgo));
+
+    $threads = Thread::feed();
+
+    $this->assertTrue($threadFromTwoDaysAgo->is($threads->first()), 'First thread is incorrect');
+    $this->assertTrue($threadFromToday->is($threads->slice(1)->first()), 'Second thread is incorrect');
+    $this->assertTrue($threadUpdatedYesterday->is($threads->last()), 'Last thread is incorrect');
+});
+
+it('can retrieve only resolved threads', function () {
+    createThreadFromToday();
+    $resolvedThread = createResolvedThread();
+
+    $threads = Thread::feedQuery()->resolved()->get();
+
+    expect($threads)->toHaveCount(1);
+    expect($resolvedThread->is($threads->first()))->toBeTrue();
+});
+
+it('can retrieve only active threads', function () {
+    createThreadFromToday();
+    $activeThread = createActiveThread();
+
+    $threads = Thread::feedQuery()->active()->get();
+
+    expect($threads)->toHaveCount(1);
+    expect($activeThread->is($threads->first()))->toBeTrue();
+});
+
+it('generates a slug when valid url characters provided', function () {
+    $thread = Thread::factory()->make(['slug' => 'Help with eloquent']);
+
+    expect($thread->slug())->toEqual('help-with-eloquent');
+});
+
+it('generates a unique slug when valid url characters provided', function () {
+    $threadOne = Thread::factory()->create(['slug' => 'Help with eloquent']);
+    $threadTwo = Thread::factory()->create(['slug' => 'Help with eloquent']);
+
+    expect($threadTwo->slug())->toEqual('help-with-eloquent-1');
+});
+
+it('generates a slug when invalid url characters provided', function () {
+    $thread = Thread::factory()->make(['slug' => '한글 테스트']);
+
+    // When providing a slug with invalid url characters, a random 5 character string is returned.
+    expect($thread->slug())->toMatch('/\w{5}/');
+});
+
+// Helpers
+function createThreadFromToday(): Thread
 {
-    use DatabaseMigrations;
+    $today = Carbon::now();
 
-    /** @test */
-    public function it_can_find_by_slug()
-    {
-        factory(Thread::class)->create(['slug' => 'foo']);
+    return Thread::factory()->create(['created_at' => $today, 'last_activity_at' => $today]);
+}
 
-        $this->assertInstanceOf(Thread::class, Thread::findBySlug('foo'));
-    }
+function createThreadFromYesterday(): Thread
+{
+    $yesterday = Carbon::yesterday();
 
-    /** @test */
-    public function it_can_give_an_excerpt_of_its_body()
-    {
-        $thread = factory(Thread::class)->make(['body' => 'This is a pretty long text.']);
+    return Thread::factory()->create(['created_at' => $yesterday, 'last_activity_at' => $yesterday]);
+}
 
-        $this->assertEquals('This is...', $thread->excerpt(7));
-    }
+function createThreadFromTwoDaysAgo(): Thread
+{
+    $twoDaysAgo = Carbon::now()->subDay(2);
 
-    /** @test */
-    public function its_conversation_is_old_when_the_oldest_reply_was_six_months_ago()
-    {
-        $thread = factory(Thread::class)->create();
-        $thread->repliesRelation()->save(factory(Reply::class)->make(['created_at' => now()->subMonths(7)]));
+    return Thread::factory()->create(['created_at' => $twoDaysAgo, 'last_activity_at' => $twoDaysAgo]);
+}
 
-        $this->assertTrue($thread->isConversationOld());
+function createResolvedThread()
+{
+    $thread = createThreadFromToday();
+    $reply = Reply::factory()->create();
+    $user = User::factory()->create();
+    $thread->markSolution($reply, $user);
 
-        $thread = factory(Thread::class)->create();
-        $thread->repliesRelation()->save(factory(Reply::class)->make());
+    return $thread;
+}
 
-        $this->assertFalse($thread->isConversationOld());
-    }
+function createActiveThread()
+{
+    $thread = createThreadFromToday();
+    $reply = Reply::factory()->create();
+    $reply->to($thread);
+    $reply->save();
 
-    /** @test */
-    public function its_conversation_is_old_when_there_are_no_replies_but_the_creation_date_was_six_months_ago()
-    {
-        $thread = factory(Thread::class)->create(['created_at' => now()->subMonths(7)]);
-
-        $this->assertTrue($thread->isConversationOld());
-
-        $thread = factory(Thread::class)->create();
-
-        $this->assertFalse($thread->isConversationOld());
-    }
-
-    /** @test */
-    public function we_can_mark_and_unmark_a_reply_as_the_solution()
-    {
-        $thread = factory(Thread::class)->create();
-        $reply = factory(Reply::class)->create(['replyable_id' => $thread->id()]);
-
-        $this->assertFalse($thread->isSolutionReply($reply));
-
-        $thread->markSolution($reply);
-
-        $this->assertTrue($thread->isSolutionReply($reply));
-
-        $thread->unmarkSolution();
-
-        $this->assertFalse($thread->isSolutionReply($reply));
-    }
-
-    /** @test */
-    public function it_can_retrieve_the_latest_threads_in_a_correct_order()
-    {
-        $threadUpdatedYesterday = $this->createThreadFromYesterday();
-        $threadFromToday = $this->createThreadFromToday();
-        $threadFromTwoDaysAgo = $this->createThreadFromTwoDaysAgo();
-
-        $threads = Thread::feed();
-
-        $this->assertTrue($threadFromToday->matches($threads->first()), 'First thread is incorrect');
-        $this->assertTrue($threadUpdatedYesterday->matches($threads->slice(1)->first()), 'Second thread is incorrect');
-        $this->assertTrue($threadFromTwoDaysAgo->matches($threads->last()), 'Last thread is incorrect');
-    }
-
-    private function createThreadFromToday(): Thread
-    {
-        $today = Carbon::now();
-
-        return factory(Thread::class)->create(['created_at' => $today]);
-    }
-
-    private function createThreadFromYesterday(): Thread
-    {
-        $yesterday = Carbon::yesterday();
-
-        return factory(Thread::class)->create(['created_at' => $yesterday]);
-    }
-
-    private function createThreadFromTwoDaysAgo(): Thread
-    {
-        $twoDaysAgo = Carbon::now()->subDay(2);
-
-        return factory(Thread::class)->create(['created_at' => $twoDaysAgo]);
-    }
+    return $thread;
 }

@@ -1,11 +1,11 @@
 <?php
 
-use App\User;
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddBannedAtColumn extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -22,4 +22,4 @@ class AddBannedAtColumn extends Migration
             $table->dropColumn('is_banned');
         });
     }
-}
+};

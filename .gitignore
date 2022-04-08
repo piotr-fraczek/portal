@@ -5,7 +5,10 @@
 /public/storage
 /public/hot
 /public/mix-manifest.json
+/public/sitemap.xml
+/public/.htaccess
 /storage/*.key
 /vendor
+/.vscode
 .env
 .phpunit.result.cache

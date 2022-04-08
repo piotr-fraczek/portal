@@ -4,23 +4,17 @@ namespace App\Http\Requests;
 
 use App\Rules\DoesNotContainUrlRule;
 use App\Rules\HttpImageRule;
-use App\User;
 
 class ThreadRequest extends Request
 {
     public function rules()
     {
         return [
-            'subject' => ['required', 'max:60', new DoesNotContainUrlRule],
-            'body' => ['required', new HttpImageRule],
+            'subject' => ['required', 'max:60', new DoesNotContainUrlRule()],
+            'body' => ['required', new HttpImageRule()],
             'tags' => 'array',
             'tags.*' => 'exists:tags,id',
         ];
-    }
-
-    public function author(): User
-    {
-        return $this->user();
     }
 
     public function subject(): string

@@ -1,10 +1,18 @@
 <?php
 
-use App\Models\Tag;
+declare(strict_types=1);
 
-$factory->define(Tag::class, function (Faker\Generator $faker) {
-    return [
-        'name' => $faker->text(15),
-        'slug' => $faker->slug,
-    ];
-});
+namespace Database\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+class TagFactory extends Factory
+{
+    public function definition(): array
+    {
+        return [
+            'name' => $this->faker->text(15),
+            'slug' => $this->faker->slug(),
+        ];
+    }
+}

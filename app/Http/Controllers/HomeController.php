@@ -2,14 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Article;
+use App\Models\Reply;
 use App\Models\Thread;
-use App\User;
-use Cache;
+use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
     public function show()
     {
+        $communityMembers = Cache::remember('communityMembers', now()->addMinutes(5), function () {
+            return User::withCounts()
+                ->hasActivity()
+                ->whereNull('banned_at')
+                ->inRandomOrder()
+                ->take(100)
+                ->get()
+                ->chunk(20);
+        });
+
         $totalUsers = Cache::remember('totalUsers', now()->addDay(), function () {
             return number_format(User::count());
         });
@@ -18,43 +30,40 @@ class HomeController extends Controller
             return number_format(Thread::count());
         });
 
-        $resolutionTime = Cache::remember('resolutionTime', now()->addDay(), function () {
-            return number_format(Thread::resolutionTime());
+        $totalReplies = Cache::remember('totalReplies', now()->addDay(), function () {
+            return number_format(Reply::count());
         });
 
         $latestThreads = Cache::remember('latestThreads', now()->addHour(), function () {
             return Thread::whereNull('solution_reply_id')
-                ->whereBetween('threads.created_at', [now()->subWeek(), now()])
+                ->whereBetween('threads.created_at', [now()->subMonth(), now()])
+                ->unlocked()
                 ->inRandomOrder()
                 ->limit(3)
                 ->get();
         });
 
+        $latestArticles = Cache::remember('latestArticles', now()->addHour(), function () {
+            return Article::published()
+                ->trending()
+                ->limit(4)
+                ->get();
+        });
+
         return view('home', [
+            'communityMembers' => $communityMembers,
             'totalUsers' => $totalUsers,
             'totalThreads' => $totalThreads,
-            'resolutionTime' => $resolutionTime,
+            'totalReplies' => $totalReplies,
             'latestThreads' => $latestThreads,
+            'latestArticles' => $latestArticles,
         ]);
     }
 
-    public function rules()
+    public function pastebin(string $paste = '')
     {
-        return view('rules');
-    }
+        $paste = str_replace(PHP_EOL, '', $paste);
 
-    public function terms()
-    {
-        return view('terms');
-    }
-
-    public function privacy()
-    {
-        return view('privacy');
-    }
-
-    public function pastebin(string $hash = '')
-    {
-        return redirect()->away("https://paste.laravel.io/$hash");
+        return redirect()->away("https://paste.laravel.io/$paste");
     }
 }

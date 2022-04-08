@@ -7,27 +7,19 @@
 }
 
 .button-primary {
-    @apply text-white bg-green-primary;
+    @apply text-white bg-lio-500 !important;
 }
 
 .button-primary:hover {
-    @apply bg-green-dark;
-}
-
-.button-muted {
-    @apply text-white bg-gray-500;
-}
-
-.button-muted:hover {
-    @apply bg-gray-600;
+    @apply bg-lio-600;
 }
 
 .button-danger {
-    @apply text-white bg-red-primary;
+    @apply text-white bg-red-600 !important;
 }
 
 .button-danger:hover {
-    @apply bg-red-dark;
+    @apply bg-red-600;
 }
 
 .button-dark {
@@ -42,10 +34,14 @@
     @apply w-full;
 }
 
-.button-big {
-    @apply px-6 py-4 text-lg;
-}
-
 a.button:hover {
     @apply no-underline;
+}
+
+.button-dropdown-left {
+    @apply rounded-r-none px-2;
+}
+
+.button-dropdown-right {
+    @apply rounded-l-none px-2;
 }

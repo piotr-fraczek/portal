@@ -4,25 +4,15 @@ namespace App\Jobs;
 
 use App\Models\Subscription;
 use App\Models\SubscriptionAble;
-use App\User;
+use App\Models\User;
 use Ramsey\Uuid\Uuid;
 
 final class SubscribeToSubscriptionAble
 {
-    /**
-     * @var \App\User
-     */
-    private $user;
-
-    /**
-     * @var \App\Models\SubscriptionAble
-     */
-    private $subscriptionAble;
-
-    public function __construct(User $user, SubscriptionAble $subscriptionAble)
-    {
-        $this->user = $user;
-        $this->subscriptionAble = $subscriptionAble;
+    public function __construct(
+        private User $user,
+        private SubscriptionAble $subscriptionAble
+    ) {
     }
 
     public function handle()

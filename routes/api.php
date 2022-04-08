@@ -1,18 +1,10 @@
 <?php
 
-//use Illuminate\Http\Request;
+// Articles
+use App\Http\Controllers\Articles\ArticlesController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
-
-//Route::middleware('auth:api')->get('/user', function (Request $request) {
-//    return $request->user();
-//});
+Route::prefix('articles')->middleware('throttle:api')->group(function () {
+    Route::post('/', [ArticlesController::class, 'store'])->name('api.articles.store');
+    Route::put('{article}', [ArticlesController::class, 'update'])->name('api.articles.update');
+    Route::delete('{article}', [ArticlesController::class, 'delete'])->name('api.articles.delete');
+});

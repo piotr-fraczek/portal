@@ -3,12 +3,14 @@
 namespace App\Policies;
 
 use App\Models\Reply;
-use App\User;
+use App\Models\User;
 
-class ReplyPolicy
+final class ReplyPolicy
 {
     const CREATE = 'create';
+
     const UPDATE = 'update';
+
     const DELETE = 'delete';
 
     /**
@@ -16,7 +18,7 @@ class ReplyPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isConfirmed();
+        return $user->hasVerifiedEmail();
     }
 
     /**

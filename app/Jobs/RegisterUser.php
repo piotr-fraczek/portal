@@ -4,54 +4,28 @@ namespace App\Jobs;
 
 use App\Exceptions\CannotCreateUser;
 use App\Http\Requests\RegisterRequest;
-use App\User;
+use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Str;
 
 final class RegisterUser
 {
-    /**
-     * @var string
-     */
-    private $name;
-
-    /**
-     * @var string
-     */
-    private $email;
-
-    /**
-     * @var string
-     */
-    private $username;
-
-    /**
-     * @var string
-     */
-    private $githubId;
-
-    /**
-     * @var string
-     */
-    private $githubUsername;
-
-    public function __construct(string $name, string $email, string $username, string $githubId, string $githubUsername)
-    {
-        $this->name = $name;
-        $this->email = $email;
-        $this->username = $username;
-        $this->githubId = $githubId;
-        $this->githubUsername = $githubUsername;
+    public function __construct(
+        private string $name,
+        private string $email,
+        private string $username,
+        private string $githubId,
+        private string $githubUsername
+    ) {
     }
 
     public static function fromRequest(RegisterRequest $request): self
     {
-        return new static(
+        return new self(
             $request->name(),
             $request->emailAddress(),
             $request->username(),
             $request->githubId(),
-            $request->githubUsername()
+            $request->githubUsername(),
         );
     }
 
@@ -63,10 +37,10 @@ final class RegisterUser
         $user = new User([
             'name' => $this->name,
             'email' => $this->email,
-            'username' => strtolower($this->username),
+            'username' => mb_strtolower($this->username),
             'github_id' => $this->githubId,
             'github_username' => $this->githubUsername,
-            'confirmation_code' => Str::random(60),
+            'twitter' => null,
             'type' => User::DEFAULT,
             'bio' => '',
             'remember_token' => '',

@@ -8,14 +8,9 @@ use Illuminate\Support\Arr;
 
 final class GithubUser implements Arrayable
 {
-    /**
-     * @var array
-     */
-    private $attributes;
-
-    public function __construct(array $attributes)
-    {
-        $this->attributes = $attributes;
+    public function __construct(
+        private array $attributes
+    ) {
     }
 
     public function isTooYoung(): bool
@@ -33,7 +28,7 @@ final class GithubUser implements Arrayable
         return Carbon::now()->subDays(14);
     }
 
-    private function get($name)
+    private function get(string $name)
     {
         return Arr::get($this->attributes, $name);
     }

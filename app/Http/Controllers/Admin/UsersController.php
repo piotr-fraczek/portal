@@ -7,8 +7,9 @@ use App\Http\Middleware\VerifyAdmins;
 use App\Jobs\BanUser;
 use App\Jobs\DeleteUser;
 use App\Jobs\UnbanUser;
+use App\Models\User;
 use App\Policies\UserPolicy;
-use App\User;
+use App\Queries\SearchUsers;
 use Illuminate\Auth\Middleware\Authenticate;
 
 class UsersController extends Controller
@@ -18,11 +19,22 @@ class UsersController extends Controller
         $this->middleware([Authenticate::class, VerifyAdmins::class]);
     }
 
+    public function index()
+    {
+        if ($adminSearch = request('admin_search')) {
+            $users = SearchUsers::get($adminSearch)->appends(['admin_search' => $adminSearch]);
+        } else {
+            $users = User::latest()->paginate(20);
+        }
+
+        return view('admin.users', compact('users', 'adminSearch'));
+    }
+
     public function ban(User $user)
     {
         $this->authorize(UserPolicy::BAN, $user);
 
-        $this->dispatchNow(new BanUser($user));
+        $this->dispatchSync(new BanUser($user));
 
         $this->success('admin.users.banned', $user->name());
 
@@ -33,7 +45,7 @@ class UsersController extends Controller
     {
         $this->authorize(UserPolicy::BAN, $user);
 
-        $this->dispatchNow(new UnbanUser($user));
+        $this->dispatchSync(new UnbanUser($user));
 
         $this->success('admin.users.unbanned', $user->name());
 
@@ -44,7 +56,7 @@ class UsersController extends Controller
     {
         $this->authorize(UserPolicy::DELETE, $user);
 
-        $this->dispatchNow(new DeleteUser($user));
+        $this->dispatchSync(new DeleteUser($user));
 
         $this->success('admin.users.deleted', $user->name());
 

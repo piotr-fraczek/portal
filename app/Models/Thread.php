@@ -2,55 +2,82 @@
 
 namespace App\Models;
 
+use App\Concerns\HasAuthor;
+use App\Concerns\HasLikes;
+use App\Concerns\HasMentions;
+use App\Concerns\HasSlug;
+use App\Concerns\HasTags;
+use App\Concerns\HasTimestamps;
+use App\Concerns\PreparesSearch;
+use App\Concerns\ProvidesSubscriptions;
+use App\Concerns\ReceivesReplies;
 use App\Exceptions\CouldNotMarkReplyAsSolution;
-use App\Helpers\HasAuthor;
-use App\Helpers\HasLikes;
-use App\Helpers\HasSlug;
-use App\Helpers\HasTags;
-use App\Helpers\HasTimestamps;
-use App\Helpers\ModelHelpers;
-use App\Helpers\ProvidesSubscriptions;
-use App\Helpers\ReceivesReplies;
-use DB;
 use Exception;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Scout\Searchable;
 use Spatie\Feed\Feedable;
 use Spatie\Feed\FeedItem;
 
-final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedable
+final class Thread extends Model implements Feedable, ReplyAble, SubscriptionAble, MentionAble
 {
     use HasAuthor;
+    use HasFactory;
     use HasLikes;
+    use HasMentions;
     use HasSlug;
     use HasTags;
     use HasTimestamps;
-    use ModelHelpers;
+    use PreparesSearch;
     use ProvidesSubscriptions;
     use ReceivesReplies;
+    use Searchable;
 
     const TABLE = 'threads';
 
     const FEED_PAGE_SIZE = 20;
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     protected $table = self::TABLE;
 
     /**
-     * {@inheritdoc}
+     * @inheritdoc
      */
     protected $fillable = [
         'body',
         'slug',
         'subject',
+        'last_activity_at',
+        'locked_by',
+    ];
+
+    /**
+     * @inheritdoc
+     */
+    protected $with = [
+        'authorRelation',
+        'likesRelation',
+        'repliesRelation',
+        'tagsRelation',
+        'updatedByRelation',
+    ];
+
+    /**
+     * @inheritdoc
+     */
+    protected $casts = [
+        'last_activity_at' => 'datetime',
+        'locked_at' => 'datetime',
     ];
 
     public function id(): int
@@ -73,6 +100,21 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
         return Str::limit(strip_tags(md_to_html($this->body())), $limit);
     }
 
+    public function updatedBy(): ?User
+    {
+        return $this->updatedByRelation;
+    }
+
+    public function updatedByRelation(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function isUpdated(): bool
+    {
+        return $this->updated_at->gt($this->created_at);
+    }
+
     public function solutionReply(): ?Reply
     {
         return $this->solutionReplyRelation;
@@ -85,19 +127,19 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
 
     public function isSolved(): bool
     {
-        return ! is_null($this->solution_reply_id);
+        return null !== $this->solution_reply_id;
     }
 
     public function isSolutionReply(Reply $reply): bool
     {
         if ($solution = $this->solutionReply()) {
-            return $solution->matches($reply);
+            return $solution->is($reply);
         }
 
         return false;
     }
 
-    public function markSolution(Reply $reply)
+    public function markSolution(Reply $reply, User $user)
     {
         $thread = $reply->replyAble();
 
@@ -105,14 +147,60 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
             throw CouldNotMarkReplyAsSolution::replyAbleIsNotAThread($reply);
         }
 
+        $this->resolvedByRelation()->associate($user);
         $this->solutionReplyRelation()->associate($reply);
         $this->save();
     }
 
     public function unmarkSolution()
     {
+        $this->resolvedByRelation()->dissociate();
         $this->solutionReplyRelation()->dissociate();
         $this->save();
+    }
+
+    public function resolvedBy(): ?User
+    {
+        return $this->resolvedByRelation;
+    }
+
+    public function resolvedByRelation(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function wasResolvedBy(User $user): bool
+    {
+        if ($resolvedBy = $this->resolvedBy()) {
+            return $resolvedBy->is($user);
+        }
+
+        return false;
+    }
+
+    public function isLocked(): bool
+    {
+        return ! is_null($this->locked_at);
+    }
+
+    public function isUnlocked(): bool
+    {
+        return ! $this->isLocked();
+    }
+
+    public function lockedBy(): ?User
+    {
+        return $this->lockedByRelation;
+    }
+
+    public function lockedByRelation(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+
+    public function isLockedBy(User $user): bool
+    {
+        return $user->is($this->lockedBy());
     }
 
     public function delete()
@@ -133,7 +221,7 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
             ->summary($this->body)
             ->updated($updatedAt)
             ->link(route('thread', $this->slug))
-            ->author($this->author()->name);
+            ->authorName($this->author()->name);
     }
 
     /**
@@ -141,7 +229,7 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
      */
     public static function feed(int $limit = 20): Collection
     {
-        return static::feedQuery()->limit($limit)->get();
+        return self::feedQuery()->limit($limit)->get();
     }
 
     /**
@@ -149,7 +237,7 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
      */
     public static function feedPaginated(int $perPage = 20): Paginator
     {
-        return static::feedQuery()->paginate($perPage);
+        return self::feedQuery()->paginate($perPage);
     }
 
     /**
@@ -157,13 +245,18 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
      */
     public static function feedByTagPaginated(Tag $tag, int $perPage = 20): Paginator
     {
-        return static::feedQuery()
-            ->join('taggables', function ($join) use ($tag) {
+        return self::feedByTagQuery($tag)
+            ->paginate($perPage);
+    }
+
+    public static function feedByTagQuery(Tag $tag): Builder
+    {
+        return self::feedQuery()
+            ->join('taggables', function ($join) {
                 $join->on('threads.id', 'taggables.taggable_id')
                     ->where('taggable_type', static::TABLE);
             })
-            ->where('taggables.tag_id', $tag->id())
-            ->paginate($perPage);
+            ->where('taggables.tag_id', $tag->id());
     }
 
     /**
@@ -171,19 +264,12 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
      */
     public static function feedQuery(): Builder
     {
-        return static::with('solutionReplyRelation')
-            ->leftJoin('replies', function ($join) {
-                $join->on('threads.id', 'replies.replyable_id')
-                    ->where('replies.replyable_type', static::TABLE);
-            })
-            ->orderBy('latest_creation', 'DESC')
-            ->groupBy('threads.id')
-            ->select('threads.*', DB::raw('
-                CASE WHEN COALESCE(MAX(replies.created_at), 0) > threads.created_at
-                THEN COALESCE(MAX(replies.created_at), 0)
-                ELSE threads.created_at
-                END AS latest_creation
-            '));
+        return self::withOnly([
+            'tagsRelation',
+            'authorRelation',
+        ])
+            ->withCount(['repliesRelation as reply_count', 'likesRelation as like_count'])
+            ->latest('last_activity_at');
     }
 
     /**
@@ -192,10 +278,10 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
     public static function resolutionTime()
     {
         try {
-            return static::join('replies', 'threads.solution_reply_id', '=', 'replies.id')
+            return self::join('replies', 'threads.solution_reply_id', '=', 'replies.id')
                 ->select(DB::raw('avg(datediff(replies.created_at, threads.created_at)) as duration'))
-                ->pluck('duration')
-                ->first();
+                ->first()
+                ->duration;
         } catch (Exception $e) {
             return false;
         }
@@ -203,8 +289,65 @@ final class Thread extends Model implements ReplyAble, SubscriptionAble, Feedabl
 
     public static function getFeedItems(): SupportCollection
     {
-        return static::feedQuery()
-            ->paginate(static::FEED_PAGE_SIZE)
+        return self::feedQuery()
+            ->paginate(self::FEED_PAGE_SIZE)
             ->getCollection();
+    }
+
+    public function replyAbleSubject(): string
+    {
+        return $this->subject();
+    }
+
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id(),
+            'subject' => $this->subject(),
+            'body' => $this->body(),
+            'slug' => $this->slug(),
+        ];
+    }
+
+    public function searchIndexShouldBeUpdated()
+    {
+        return $this->isDirty([
+            'subject',
+            'body',
+            'slug',
+        ]);
+    }
+
+    public function splitBody($value)
+    {
+        return $this->split($value);
+    }
+
+    public function scopeResolved(Builder $query): Builder
+    {
+        return $query->whereNotNull('solution_reply_id');
+    }
+
+    public function scopeUnresolved(Builder $query): Builder
+    {
+        return $query->whereNull('solution_reply_id');
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->has('repliesRelation');
+    }
+
+    public function scopeUnlocked(Builder $query): Builder
+    {
+        return $query->whereNull('locked_at');
+    }
+
+    public function participants(): SupportCollection
+    {
+        return $this->replyAuthors()
+            ->get()
+            ->prepend($this->author())
+            ->unique();
     }
 }

@@ -2,22 +2,17 @@
 
 namespace App\Markdown;
 
-use League\CommonMark\CommonMarkConverter;
+use League\CommonMark\MarkdownConverter;
 
 final class LeagueConverter implements Converter
 {
-    /**
-     * @var \League\CommonMark\CommonMarkConverter
-     */
-    private $converter;
-
-    public function __construct(CommonMarkConverter $converter)
-    {
-        $this->converter = $converter;
+    public function __construct(
+        private MarkdownConverter $converter
+    ) {
     }
 
     public function toHtml(string $markdown): string
     {
-        return $this->converter->convertToHtml($markdown);
+        return $this->converter->convert($markdown)->getContent();
     }
 }

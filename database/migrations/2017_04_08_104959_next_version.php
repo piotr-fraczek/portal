@@ -2,8 +2,10 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
-class NextVersion extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -134,7 +136,7 @@ class NextVersion extends Migration
                 'reply_count',
                 'is_question',
                 'pinned',
-                'laravel_version'
+                'laravel_version',
             );
         });
         Schema::table('threads', function (Blueprint $table) {
@@ -191,22 +193,6 @@ class NextVersion extends Migration
             $table->index('slug');
         });
 
-        // Add new tags
-        if (! app()->runningUnitTests()) {
-            DB::table('tags')->insert([
-                ['name' => 'Laravel', 'slug' => 'laravel'],
-                ['name' => 'Lumen', 'slug' => 'lumen'],
-                ['name' => 'Spark', 'slug' => 'spark'],
-                ['name' => 'Forge', 'slug' => 'Forge'],
-                ['name' => 'Envoyer', 'slug' => 'envoyer'],
-                ['name' => 'Homestead', 'slug' => 'homestead'],
-                ['name' => 'Valet', 'slug' => 'valet'],
-                ['name' => 'Socialite', 'slug' => 'socialite'],
-                ['name' => 'Mix', 'slug' => 'mix'],
-                ['name' => 'Dusk', 'slug' => 'dusk'],
-            ]);
-        }
-
         // Remove unused tables
         Schema::drop('comments');
         Schema::drop('comment_tag');
@@ -214,4 +200,4 @@ class NextVersion extends Migration
         Schema::drop('role_user');
         Schema::drop('roles');
     }
-}
+};
